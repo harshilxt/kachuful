@@ -14,6 +14,7 @@ import { ListOrdered, LogOut, Play, Timer } from "lucide-react";
 import { cn } from "../lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { computeSeatGeometry, layoutScale } from "../lib/seats";
+import { useViewport } from "../lib/useViewport";
 
 interface Props {
   state: GameState;
@@ -41,12 +42,14 @@ export function GameTable({
   leaveConfirmMessage = "Quit and return to home?",
 }: Props) {
   const [showScoreboard, setShowScoreboard] = useState(false);
+  const vp = useViewport();
+  const isMobile = vp.isMobile;
 
   const seatGeometry = useMemo(
-    () => computeSeatGeometry(state.players, humanId),
-    [state.players, humanId]
+    () => computeSeatGeometry(state.players, humanId, { isMobile }),
+    [state.players, humanId, isMobile]
   );
-  const scale = layoutScale(state.players.length);
+  const scale = layoutScale(state.players.length, isMobile);
 
   const expectedId = currentExpectedPlayerId(state);
   const isHumanTurn = expectedId === humanId;
@@ -124,22 +127,25 @@ export function GameTable({
     <div className="h-screen relative table-felt overflow-hidden flex flex-col">
       <div className="absolute inset-0 [background-image:radial-gradient(ellipse_at_center,transparent_45%,rgba(0,0,0,0.55)_100%)] pointer-events-none" />
 
-      <header className="relative z-20 px-4 py-3 flex items-center justify-between gap-3 flex-wrap shrink-0">
+      <header className="relative z-20 px-2 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2 shrink-0">
         <TrumpIndicator
           trump={state.trump}
           round={state.round}
           totalRounds={state.totalRounds}
           cardsPerPlayer={state.cardsPerPlayer}
+          compact={isMobile}
         />
-        <div className="flex items-center gap-2 max-w-[44vw]">
-          <div className="panel px-3 py-2 text-sm text-white/85 flex items-center gap-2 truncate">
-            <span className="w-2 h-2 rounded-full bg-gold-400 animate-pulse shrink-0" />
-            <span className="truncate">{state.message}</span>
-          </div>
+        <div className="flex items-center gap-2 min-w-0 flex-1 justify-center">
+          {!isMobile && (
+            <div className="panel px-3 py-2 text-sm text-white/85 flex items-center gap-2 truncate min-w-0">
+              <span className="w-2 h-2 rounded-full bg-gold-400 animate-pulse shrink-0" />
+              <span className="truncate">{state.message}</span>
+            </div>
+          )}
           {isActiveTurn && expectedId && (
             <div
               className={cn(
-                "chip font-bold transition-colors",
+                "chip font-bold transition-colors shrink-0",
                 timeLeft <= 5
                   ? "bg-red-500/25 text-red-200"
                   : timeLeft <= 10
@@ -153,15 +159,21 @@ export function GameTable({
             </div>
           )}
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => setShowScoreboard(true)} className="btn-ghost">
-            <ListOrdered className="w-4 h-4" /> Scores
+        <div className="flex gap-1 sm:gap-2 shrink-0">
+          <button
+            onClick={() => setShowScoreboard(true)}
+            className="btn-ghost !px-2 sm:!px-5"
+            title="Scoreboard"
+          >
+            <ListOrdered className="w-4 h-4" />
+            <span className="hidden sm:inline">Scores</span>
           </button>
           <button
             onClick={() => {
               if (confirm(leaveConfirmMessage)) onLeave();
             }}
-            className="btn-ghost"
+            className="btn-ghost !px-2 sm:!px-5"
+            title="Leave"
           >
             <LogOut className="w-4 h-4" />
           </button>
@@ -253,6 +265,7 @@ export function GameTable({
                 side="bottom"
                 handAxis="h"
                 isLeading={!allTied && leader?.id === human.id}
+                compact={isMobile}
               />
             </div>
             <Hand
@@ -261,6 +274,7 @@ export function GameTable({
               leadSuit={state.leadSuit}
               canPlay={isHumanTurn && state.phase === "playing"}
               onPlay={(c) => onPlay(c.id)}
+              compact={isMobile}
             />
             {isHumanTurn && state.phase === "playing" && (
               <motion.div

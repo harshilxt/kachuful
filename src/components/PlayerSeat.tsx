@@ -86,6 +86,9 @@ export function PlayerSeat({
             {bid ?? "—"}/{tricks}
           </span>
           <span className="text-gold-400 font-semibold">·{total}</span>
+          {!isHuman && cardCount > 0 && (
+            <span className="text-white/40 ml-auto">🂠{cardCount}</span>
+          )}
         </div>
       </div>
     </motion.div>
@@ -155,34 +158,31 @@ export function PlayerSeat({
     </motion.div>
   );
 
+  // In compact mode we skip the visual card stack entirely. Hand size is
+  // shown numerically inside the panel instead, so opponents don't get
+  // pushed off-screen on narrow viewports.
   const cardsBlock =
-    cardCount > 0 && !isHuman ? (
-      compact ? (
-        <div className="chip bg-white/10 text-white/80 text-[10px] py-0.5">
-          🂠 ×{cardCount}
-        </div>
-      ) : (
-        <div
-          className={cn(
-            "flex pointer-events-none",
-            handAxis === "h" ? "flex-row -space-x-7" : "flex-col -space-y-14"
-          )}
-        >
-          {Array.from({ length: cardCount }).map((_, i) => (
-            <motion.div
-              key={i}
-              initial={{ scale: 0.6, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: i * 0.04 }}
-              style={{
-                transform: handAxis === "v" ? "rotate(90deg)" : undefined,
-              }}
-            >
-              <PlayingCard faceDown size="sm" />
-            </motion.div>
-          ))}
-        </div>
-      )
+    !compact && cardCount > 0 && !isHuman ? (
+      <div
+        className={cn(
+          "flex pointer-events-none",
+          handAxis === "h" ? "flex-row -space-x-7" : "flex-col -space-y-14"
+        )}
+      >
+        {Array.from({ length: cardCount }).map((_, i) => (
+          <motion.div
+            key={i}
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: i * 0.04 }}
+            style={{
+              transform: handAxis === "v" ? "rotate(90deg)" : undefined,
+            }}
+          >
+            <PlayingCard faceDown size="sm" />
+          </motion.div>
+        ))}
+      </div>
     ) : null;
 
   // Order children so the cards sit between the nameplate and the table center.

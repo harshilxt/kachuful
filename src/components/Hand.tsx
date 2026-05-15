@@ -10,18 +10,38 @@ interface Props {
   leadSuit: Suit | null;
   canPlay: boolean;
   onPlay: (card: Card) => void;
+  compact?: boolean;
 }
 
-export function Hand({ cards, isMyTurn, leadSuit, canPlay, onPlay }: Props) {
+export function Hand({
+  cards,
+  isMyTurn,
+  leadSuit,
+  canPlay,
+  onPlay,
+  compact = false,
+}: Props) {
   const legal = canPlay ? legalCards(cards, leadSuit) : [];
   const legalIds = new Set(legal.map((c) => c.id));
-  const fanAngleStep = Math.min(6, 36 / Math.max(cards.length, 1));
+  const fanAngleStep = Math.min(
+    compact ? 4 : 6,
+    (compact ? 24 : 36) / Math.max(cards.length, 1)
+  );
   const start = -((cards.length - 1) * fanAngleStep) / 2;
+  const cardSize = compact ? "md" : "lg";
+  // Overlap more aggressively when there are many cards on a narrow screen
+  const overlap = compact
+    ? cards.length > 6
+      ? -22
+      : cards.length > 4
+      ? -16
+      : -10
+    : -8;
 
   return (
     <div
       className={cn(
-        "flex justify-center items-end gap-1 px-4 py-2 transition-opacity",
+        "flex justify-center items-end px-2 sm:px-4 py-1 sm:py-2 transition-opacity",
         !cards.length && "opacity-0"
       )}
     >
@@ -44,12 +64,12 @@ export function Hand({ cards, isMyTurn, leadSuit, canPlay, onPlay }: Props) {
               }}
               style={{
                 transformOrigin: "bottom center",
-                marginInline: -8,
+                marginInline: `${overlap / 2}px`,
               }}
             >
               <PlayingCard
                 card={card}
-                size="lg"
+                size={cardSize}
                 selectable={canPlay}
                 disabled={canPlay && !isLegal}
                 onClick={() => isLegal && onPlay(card)}

@@ -16,15 +16,20 @@ interface Options {
   trickRadius?: number;
   rx?: number;
   ry?: number;
+  isMobile?: boolean;
 }
 
 /**
- * For N players, decide layout sizing:
- * - <=6: standard panel size, smaller ellipse
- * - 7-12: compact panels, wider ellipse
- * - 13+: extra-compact (just avatar+name+chips)
+ * Decide table sizing based on player count and viewport.
+ * On small screens we always switch to compact seats and a smaller ellipse
+ * so opponents don't overflow the edges.
  */
-export function layoutScale(n: number) {
+export function layoutScale(n: number, isMobile = false) {
+  if (isMobile) {
+    if (n <= 4) return { rx: 36, ry: 30, trickRadius: 42, compact: true };
+    if (n <= 7) return { rx: 38, ry: 32, trickRadius: 50, compact: true };
+    return { rx: 40, ry: 34, trickRadius: 62, compact: true };
+  }
   if (n <= 6) return { rx: 42, ry: 38, trickRadius: 55, compact: false };
   if (n <= 10) return { rx: 44, ry: 40, trickRadius: 70, compact: true };
   if (n <= 16) return { rx: 45, ry: 42, trickRadius: 85, compact: true };
@@ -42,7 +47,7 @@ export function computeSeatGeometry(
     0,
     players.findIndex((p) => p.id === humanId)
   );
-  const scale = layoutScale(N);
+  const scale = layoutScale(N, opts.isMobile);
   const trickRadius = opts.trickRadius ?? scale.trickRadius;
   const rx = opts.rx ?? scale.rx;
   const ry = opts.ry ?? scale.ry;

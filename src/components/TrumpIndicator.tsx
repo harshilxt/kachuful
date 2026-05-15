@@ -7,6 +7,7 @@ interface Props {
   round: number;
   totalRounds: number;
   cardsPerPlayer: number;
+  compact?: boolean;
 }
 
 export function TrumpIndicator({
@@ -14,8 +15,35 @@ export function TrumpIndicator({
   round,
   totalRounds,
   cardsPerPlayer,
+  compact = false,
 }: Props) {
   const color = trump ? SUIT_COLOR[trump] : null;
+  if (compact) {
+    return (
+      <motion.div layout className="panel flex items-center gap-2 px-2 py-1.5">
+        <motion.div
+          key={trump ?? "no"}
+          initial={{ scale: 0.6, rotate: -20, opacity: 0 }}
+          animate={{ scale: 1, rotate: 0, opacity: 1 }}
+          className={cn(
+            "w-7 h-7 rounded bg-white flex items-center justify-center text-xl shadow-card",
+            color === "red" ? "text-suit-red" : "text-suit-black",
+            !trump && "bg-white/10 text-white/70 text-[10px] font-bold"
+          )}
+        >
+          {trump ? SUIT_GLYPH[trump] : "NT"}
+        </motion.div>
+        <div className="leading-tight">
+          <div className="text-[10px] text-white/55 uppercase tracking-wider">
+            R{round + 1}/{totalRounds}
+          </div>
+          <div className="text-[11px] font-semibold">
+            {cardsPerPlayer} card{cardsPerPlayer > 1 ? "s" : ""}
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
   return (
     <motion.div
       layout
