@@ -69,7 +69,7 @@ export function MpJoinScreen() {
             value={localName}
             maxLength={18}
             onChange={(e) => setLocalName(e.target.value)}
-            placeholder="Your name"
+            placeholder="Enter your name"
             className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 outline-none focus:border-gold-500 transition"
           />
         </label>

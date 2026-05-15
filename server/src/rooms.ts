@@ -68,22 +68,38 @@ export class RoomRegistry {
     if (!code || typeof code !== "string") return { ok: false, error: "Invalid code" };
     const room = this.rooms.get(code.toUpperCase());
     if (!room) return { ok: false, error: "Room not found" };
+    const trimmed = (name || "Player").slice(0, 18);
+
+    // If someone with this name is already in the room, decide:
+    // - they are connected   → name is taken, reject
+    // - they are disconnected → treat this join as a reconnect, reclaim the slot
+    const existing = [...room.players.values()].find(
+      (p) => p.name.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (existing) {
+      // Same socket trying to rejoin the same room → idempotent
+      if (existing.connected && existing.socketId === socketId) {
+        return { ok: true, room, player: existing };
+      }
+      if (existing.connected) {
+        return { ok: false, error: "That name is already taken in this room" };
+      }
+      // Disconnected — reclaim the slot (preserves host status, seat, etc.)
+      existing.connected = true;
+      existing.socketId = socketId;
+      return { ok: true, room, player: existing };
+    }
+
     if (room.phase !== "lobby") return { ok: false, error: "Game already in progress" };
     if (room.players.size >= MAX_PLAYERS) {
       return { ok: false, error: `Room full (${MAX_PLAYERS} players max — deck size limit)` };
     }
-    const trimmed = (name || "Player").slice(0, 18);
-    const used = new Set([...room.players.values()].map((p) => p.name.toLowerCase()));
-    let finalName = trimmed;
-    let i = 2;
-    while (used.has(finalName.toLowerCase())) {
-      finalName = `${trimmed}${i++}`;
-    }
+
     const seat = [...room.players.values()].length;
     const playerId = `p_${Math.random().toString(36).slice(2, 10)}`;
     const player: RoomPlayer & { socketId: string } = {
       id: playerId,
-      name: finalName,
+      name: trimmed,
       avatar: AVATARS[seat % AVATARS.length],
       ready: false,
       connected: true,
