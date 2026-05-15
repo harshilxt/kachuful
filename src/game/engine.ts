@@ -20,7 +20,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   maxCards: 8,
   scoringMode: "ten-plus-bid",
   enforceDealerConstraint: true,
-  noTrumpRound: true,
+  noTrumpRound: false,
 };
 
 export function createInitialState(

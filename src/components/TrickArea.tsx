@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { PlayedCard } from "../game/types";
 import { PlayingCard } from "./PlayingCard";
 import { SeatGeometry } from "../lib/seats";
@@ -13,7 +14,6 @@ const CARD_W = 64;
 const CARD_H = 92;
 
 export function TrickArea({ trick, seatGeometry, winnerId, radius = 55 }: Props) {
-  // Container must always fit cards plus a little padding
   const containerW = Math.max(260, radius * 2 + CARD_W + 24);
   const containerH = Math.max(200, radius * 2 + CARD_H + 24);
   return (
@@ -25,26 +25,63 @@ export function TrickArea({ trick, seatGeometry, winnerId, radius = 55 }: Props)
       {trick.map((played, i) => {
         const seat = seatGeometry[played.playerId];
         if (!seat) return null;
-        const isWinner = winnerId === played.playerId;
-        const off = seat.trickOffset;
         return (
-          <div
+          <TrickCard
             key={played.card.id}
-            className="absolute pointer-events-none transition-transform duration-300 ease-out"
-            style={{
-              left: `calc(50% + ${off.x - CARD_W / 2}px)`,
-              top: `calc(50% + ${off.y - CARD_H / 2}px)`,
-              zIndex: isWinner ? 100 : 10 + i,
-              transform: `scale(${isWinner ? 1.1 : 1})`,
-              opacity: 1,
-            }}
-          >
-            <div style={{ transform: `rotate(${off.rotation}deg)` }}>
-              <PlayingCard card={played.card} size="md" glow={isWinner} />
-            </div>
-          </div>
+            played={played}
+            seat={seat}
+            isWinner={winnerId === played.playerId}
+            zIndex={winnerId === played.playerId ? 100 : 10 + i}
+          />
         );
       })}
+    </div>
+  );
+}
+
+function TrickCard({
+  played,
+  seat,
+  isWinner,
+  zIndex,
+}: {
+  played: PlayedCard;
+  seat: SeatGeometry;
+  isWinner: boolean;
+  zIndex: number;
+}) {
+  const off = seat.trickOffset;
+  // On mount, animate from the player's direction toward the center.
+  const [entered, setEntered] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setEntered(true));
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  // Pre-entry offset: pushed 3.5x farther out in the player's direction.
+  const farX = off.x * 3.5;
+  const farY = off.y * 3.5;
+
+  return (
+    <div
+      className="absolute pointer-events-none"
+      style={{
+        left: `calc(50% + ${off.x - CARD_W / 2}px)`,
+        top: `calc(50% + ${off.y - CARD_H / 2}px)`,
+        zIndex,
+        opacity: entered ? 1 : 0,
+        transform: entered
+          ? `translate(0, 0) scale(${isWinner ? 1.1 : 1})`
+          : `translate(${farX - off.x}px, ${farY - off.y}px) scale(0.6)`,
+        transition:
+          "transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 260ms ease-out",
+      }}
+    >
+      <div style={{ transform: `rotate(${off.rotation}deg)` }}>
+        <PlayingCard card={played.card} size="md" glow={isWinner} />
+      </div>
     </div>
   );
 }

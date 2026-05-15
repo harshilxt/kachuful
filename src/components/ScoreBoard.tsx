@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { GameState } from "../game/types";
+import { GameState, SUIT_COLOR, SUIT_GLYPH } from "../game/types";
 import { cn } from "../lib/utils";
 import { X } from "lucide-react";
 
@@ -58,7 +58,22 @@ export function ScoreBoard({ state, onClose }: Props) {
                 <tr key={r.round} className="border-t border-white/5">
                   <td className="py-1.5 px-2 font-semibold">{r.round}</td>
                   <td className="text-center px-2">
-                    {r.trump ?? "NT"}
+                    {r.trump ? (
+                      <span
+                        className={cn(
+                          "inline-flex items-center justify-center w-6 h-6 rounded bg-white text-lg leading-none",
+                          SUIT_COLOR[r.trump] === "red"
+                            ? "text-suit-red"
+                            : "text-suit-black"
+                        )}
+                      >
+                        {SUIT_GLYPH[r.trump]}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-white/60">
+                        NT
+                      </span>
+                    )}
                   </td>
                   <td className="text-center px-2">{r.cardsPerPlayer}</td>
                   {state.players.map((p) => {

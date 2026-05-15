@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GameState } from "../game/types";
 import { TrumpIndicator } from "./TrumpIndicator";
 import { PlayerSeat } from "./PlayerSeat";
@@ -8,7 +8,9 @@ import { BiddingPanel } from "./BiddingPanel";
 import { RoundSummary } from "./RoundSummary";
 import { ScoreBoard } from "./ScoreBoard";
 import { currentExpectedPlayerId, getForbiddenDealerBid } from "../game/engine";
-import { ListOrdered, LogOut, Play } from "lucide-react";
+import { legalCards } from "../game/rules";
+import { RANK_VALUE } from "../game/deck";
+import { ListOrdered, LogOut, Play, Timer } from "lucide-react";
 import { cn } from "../lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { computeSeatGeometry, layoutScale } from "../lib/seats";
@@ -24,6 +26,8 @@ interface Props {
   acknowledgeLabel?: string;
   leaveConfirmMessage?: string;
 }
+
+const TURN_TIMEOUT_SEC = 15;
 
 export function GameTable({
   state,
@@ -74,6 +78,48 @@ export function GameTable({
       bid: state.bids[id] as number,
     }));
 
+  // ----- Turn timer (15s) + auto-submit on timeout -----
+  const isActiveTurn =
+    state.phase === "bidding" || state.phase === "playing";
+  const turnKey = `${state.phase}:${expectedId ?? "none"}:${state.currentTrick.length}`;
+  const [timeLeft, setTimeLeft] = useState(TURN_TIMEOUT_SEC);
+
+  useEffect(() => {
+    setTimeLeft(TURN_TIMEOUT_SEC);
+    if (!isActiveTurn || !expectedId) return;
+    const id = setInterval(() => {
+      setTimeLeft((t) => Math.max(0, t - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [turnKey, isActiveTurn, expectedId]);
+
+  // Auto-action when MY timer hits 0
+  useEffect(() => {
+    if (timeLeft !== 0) return;
+    if (!isHumanTurn) return;
+    if (state.phase === "bidding") {
+      const fallback = forbidden === 0 ? 1 : 0;
+      onBid(fallback);
+    } else if (state.phase === "playing") {
+      const legal = legalCards(humanHand, state.leadSuit);
+      if (legal.length > 0) {
+        const sorted = [...legal].sort(
+          (a, b) => RANK_VALUE[a.rank] - RANK_VALUE[b.rank]
+        );
+        onPlay(sorted[0].id);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft]);
+
+  // ----- Auto-play when only 1 card remains -----
+  useEffect(() => {
+    if (!isHumanTurn || state.phase !== "playing") return;
+    if (humanHand.length !== 1) return;
+    const t = setTimeout(() => onPlay(humanHand[0].id), 700);
+    return () => clearTimeout(t);
+  }, [isHumanTurn, state.phase, humanHand, onPlay]);
+
   return (
     <div className="h-screen relative table-felt overflow-hidden flex flex-col">
       <div className="absolute inset-0 [background-image:radial-gradient(ellipse_at_center,transparent_45%,rgba(0,0,0,0.55)_100%)] pointer-events-none" />
@@ -85,9 +131,27 @@ export function GameTable({
           totalRounds={state.totalRounds}
           cardsPerPlayer={state.cardsPerPlayer}
         />
-        <div className="panel px-3 py-2 text-sm text-white/85 flex items-center gap-2 max-w-[40vw] truncate">
-          <span className="w-2 h-2 rounded-full bg-gold-400 animate-pulse shrink-0" />
-          <span className="truncate">{state.message}</span>
+        <div className="flex items-center gap-2 max-w-[44vw]">
+          <div className="panel px-3 py-2 text-sm text-white/85 flex items-center gap-2 truncate">
+            <span className="w-2 h-2 rounded-full bg-gold-400 animate-pulse shrink-0" />
+            <span className="truncate">{state.message}</span>
+          </div>
+          {isActiveTurn && expectedId && (
+            <div
+              className={cn(
+                "chip font-bold transition-colors",
+                timeLeft <= 5
+                  ? "bg-red-500/25 text-red-200"
+                  : timeLeft <= 10
+                  ? "bg-amber-500/25 text-amber-200"
+                  : "bg-white/10 text-white/85"
+              )}
+              title={isHumanTurn ? "Your turn ends in" : "Their turn ends in"}
+            >
+              <Timer className="w-3.5 h-3.5" />
+              {timeLeft}s
+            </div>
+          )}
         </div>
         <div className="flex gap-2">
           <button onClick={() => setShowScoreboard(true)} className="btn-ghost">

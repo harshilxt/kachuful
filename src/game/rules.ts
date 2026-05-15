@@ -50,10 +50,11 @@ export function generateRoundPattern(
   return [...up, ...down];
 }
 
-export const TRUMP_CYCLE: (Suit | null)[] = ["S", "H", "D", "C", null];
+// Kachu Ful trump rotation: Spades → Diamonds → Clubs → Hearts → repeat
+export const TRUMP_CYCLE: Suit[] = ["S", "D", "C", "H"];
+export const TRUMP_CYCLE_WITH_NT: (Suit | null)[] = ["S", "D", "C", "H", null];
 
 export function trumpForRound(roundIndex: number, useNoTrump: boolean): Suit | null {
-  if (useNoTrump) return TRUMP_CYCLE[roundIndex % TRUMP_CYCLE.length];
-  const cycle: Suit[] = ["S", "H", "D", "C"];
+  const cycle = useNoTrump ? TRUMP_CYCLE_WITH_NT : TRUMP_CYCLE;
   return cycle[roundIndex % cycle.length];
 }
