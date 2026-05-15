@@ -1,0 +1,72 @@
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  background: #08251a;
+  color: #f7f3ea;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  font-family: inherit;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 font-semibold transition select-none disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-gold-500 text-ink-900 hover:bg-gold-400 active:scale-[.98] shadow-lg shadow-black/30;
+  }
+  .btn-ghost {
+    @apply btn bg-white/5 text-white border border-white/10 hover:bg-white/10;
+  }
+  .panel {
+    @apply rounded-2xl bg-ink-900/70 border border-white/10 backdrop-blur-md shadow-2xl;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold;
+  }
+}
+
+@layer utilities {
+  .text-suit-red {
+    color: #e0334a;
+  }
+  .text-suit-black {
+    color: #1a1a1a;
+  }
+  .table-felt {
+    background: radial-gradient(
+        ellipse at center,
+        #2f7d5a 0%,
+        #0f4a32 55%,
+        #0a3122 100%
+      ),
+      #08251a;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 3px;
+  }
+}
