@@ -45,6 +45,7 @@ export class RoomRegistry {
       connected: true,
       isHost: true,
       seat: 0,
+      isAi: false,
       socketId: hostSocketId,
     };
     const room: ServerRoom = {
@@ -105,6 +106,7 @@ export class RoomRegistry {
       connected: true,
       isHost: false,
       seat,
+      isAi: false,
       socketId,
     };
     room.players.set(playerId, player);
@@ -190,6 +192,7 @@ export class RoomRegistry {
         connected: p.connected,
         isHost: p.isHost,
         seat: p.seat,
+        isAi: p.isAi,
       })),
       settings: room.settings,
       phase: room.phase,
@@ -204,9 +207,35 @@ export class RoomRegistry {
       id: p.id,
       name: p.name,
       avatar: p.avatar,
-      isBot: false,
+      isBot: p.isAi,
       seat: p.seat,
     }));
+  }
+
+  /**
+   * Toggle AI control for a player and mirror it into the active game state
+   * so the client sees the badge update in real time.
+   */
+  setAiControlled(
+    room: ServerRoom,
+    playerId: string,
+    isAi: boolean
+  ): ServerRoom | null {
+    const p = room.players.get(playerId);
+    if (!p) return null;
+    p.isAi = isAi;
+    if (room.gameState) {
+      const gp = room.gameState.players.find((x) => x.id === playerId);
+      if (gp && gp.isBot !== isAi) {
+        room.gameState = {
+          ...room.gameState,
+          players: room.gameState.players.map((x) =>
+            x.id === playerId ? { ...x, isBot: isAi } : x
+          ),
+        };
+      }
+    }
+    return room;
   }
 
   emitRoom(io: Server<ClientToServerEvents, ServerToClientEvents>, room: ServerRoom) {

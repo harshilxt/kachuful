@@ -5,12 +5,14 @@ import cors from "cors";
 import {
   createInitialState,
   currentExpectedPlayerId,
+  getForbiddenDealerBid,
   nextRoundOrEnd,
   placeBid,
   playCard,
   resolveTrick,
   startRound,
 } from "../../src/game/engine";
+import { botBid, botPlay } from "../../src/game/ai";
 import { RoomRegistry, IOServer, ServerRoom } from "./rooms.ts";
 import { MIN_PLAYERS } from "../../src/lib/protocol";
 
@@ -30,6 +32,9 @@ const registry = new RoomRegistry();
 // Track each socket's current room+player (for disconnect handling)
 const sessionByPlayer = new Map<string, { code: string; socketId: string }>();
 
+// Track which rooms have an active bot loop so we don't spawn duplicates
+const botLoopActive = new Set<string>();
+
 function broadcastGame(room: ServerRoom) {
   if (!room.gameState) return;
   io.to(`room:${room.code}`).emit("game:state", room.gameState);
@@ -44,17 +49,84 @@ function startGame(room: ServerRoom) {
   room.phase = "playing";
   registry.emitRoom(io, room);
   broadcastGame(room);
+  void advanceBotMoves(room);
 }
 
-function autoResolveTrickIfNeeded(room: ServerRoom) {
-  if (!room.gameState) return;
-  if (room.gameState.phase !== "trick_resolution") return;
-  setTimeout(() => {
-    if (!room.gameState) return;
-    if (room.gameState.phase !== "trick_resolution") return;
-    room.gameState = resolveTrick(room.gameState);
-    broadcastGame(room);
-  }, 1500);
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/**
+ * Drives moves for any seat that is currently AI-controlled. Runs in a loop
+ * until the next expected player is a human, the game ends, or the phase
+ * leaves bidding/playing. Re-entrant-safe via the botLoopActive set.
+ */
+async function advanceBotMoves(room: ServerRoom) {
+  if (botLoopActive.has(room.code)) return;
+  botLoopActive.add(room.code);
+  try {
+    while (room.gameState) {
+      const state = room.gameState;
+      if (state.phase !== "bidding" && state.phase !== "playing") {
+        if (state.phase === "trick_resolution") {
+          await sleep(1500);
+          if (!room.gameState) break;
+          room.gameState = resolveTrick(room.gameState);
+          broadcastGame(room);
+          continue;
+        }
+        break;
+      }
+      const expectedId = currentExpectedPlayerId(state);
+      if (!expectedId) break;
+      const player = room.players.get(expectedId);
+      if (!player || !player.isAi) break;
+
+      // Thinking time
+      await sleep(state.phase === "bidding" ? 700 : 900);
+      if (!room.gameState) break;
+      const stillExpected = currentExpectedPlayerId(room.gameState);
+      if (stillExpected !== expectedId) continue;
+      const refreshedPlayer = room.players.get(expectedId);
+      if (!refreshedPlayer || !refreshedPlayer.isAi) break;
+
+      if (room.gameState.phase === "bidding") {
+        const isDealer =
+          room.gameState.players[room.gameState.dealerIndex].id === expectedId;
+        const forbidden = isDealer ? getForbiddenDealerBid(room.gameState) : null;
+        const bid = botBid(
+          room.gameState.hands[expectedId] || [],
+          room.gameState.trump,
+          room.gameState.cardsPerPlayer,
+          forbidden
+        );
+        room.gameState = placeBid(room.gameState, expectedId, bid);
+        broadcastGame(room);
+        continue;
+      }
+      if (room.gameState.phase === "playing") {
+        const card = botPlay({
+          hand: room.gameState.hands[expectedId] || [],
+          leadSuit: room.gameState.leadSuit,
+          trump: room.gameState.trump,
+          trick: room.gameState.currentTrick,
+          bid: room.gameState.bids[expectedId] ?? 0,
+          tricksWon: room.gameState.tricksWon[expectedId] ?? 0,
+          cardsLeft: room.gameState.hands[expectedId]?.length ?? 0,
+        });
+        room.gameState = playCard(room.gameState, expectedId, card);
+        broadcastGame(room);
+        if (room.gameState.phase === "trick_resolution") {
+          await sleep(1500);
+          if (!room.gameState) break;
+          room.gameState = resolveTrick(room.gameState);
+          broadcastGame(room);
+        }
+        continue;
+      }
+      break;
+    }
+  } finally {
+    botLoopActive.delete(room.code);
+  }
 }
 
 io.on("connection", (socket) => {
@@ -85,16 +157,37 @@ io.on("connection", (socket) => {
     sessionByPlayer.set(result.player.id, { code: result.room.code, socketId: socket.id });
     socket.join(`room:${result.room.code}`);
     ack({ ok: true, playerId: result.player.id });
+
+    // If they were AI-controlled (reclaimed slot mid-game), restore human control
+    if (result.room.phase === "playing" && result.player.isAi) {
+      registry.setAiControlled(result.room, result.player.id, false);
+      if (result.room.gameState) broadcastGame(result.room);
+    }
     registry.emitRoom(io, result.room);
   });
 
   socket.on("room:leave", () => {
     if (!roomCode || !playerId) return;
-    const room = registry.leaveRoom(roomCode, playerId);
-    socket.leave(`room:${roomCode}`);
-    sessionByPlayer.delete(playerId);
-    socket.emit("room:left");
-    if (room) registry.emitRoom(io, room);
+    const room = registry.getRoom(roomCode);
+    if (!room) return;
+
+    if (room.phase === "playing" && room.gameState) {
+      // Don't disrupt the game — AI takes over this seat
+      registry.setAiControlled(room, playerId, true);
+      registry.setConnected(roomCode, playerId, false);
+      socket.leave(`room:${roomCode}`);
+      sessionByPlayer.delete(playerId);
+      socket.emit("room:left");
+      registry.emitRoom(io, room);
+      broadcastGame(room);
+      void advanceBotMoves(room);
+    } else {
+      const after = registry.leaveRoom(roomCode, playerId);
+      socket.leave(`room:${roomCode}`);
+      sessionByPlayer.delete(playerId);
+      socket.emit("room:left");
+      if (after) registry.emitRoom(io, after);
+    }
     playerId = null;
     roomCode = null;
   });
@@ -119,7 +212,6 @@ io.on("connection", (socket) => {
       return;
     }
     sessionByPlayer.delete(targetId);
-    // Notify the kicked player + make them leave the socket.io room
     io.sockets.sockets.get(result.targetSocketId)?.emit("room:left");
     io.sockets.sockets.get(result.targetSocketId)?.leave(`room:${roomCode}`);
     if (result.room) registry.emitRoom(io, result.room);
@@ -148,6 +240,7 @@ io.on("connection", (socket) => {
     if (currentExpectedPlayerId(room.gameState) !== playerId) return;
     room.gameState = placeBid(room.gameState, playerId, bid);
     broadcastGame(room);
+    void advanceBotMoves(room);
   });
 
   socket.on("game:play", ({ card }) => {
@@ -157,9 +250,7 @@ io.on("connection", (socket) => {
     if (currentExpectedPlayerId(room.gameState) !== playerId) return;
     room.gameState = playCard(room.gameState, playerId, card);
     broadcastGame(room);
-    if (room.gameState.phase === "trick_resolution") {
-      autoResolveTrickIfNeeded(room);
-    }
+    void advanceBotMoves(room);
   });
 
   socket.on("game:next", () => {
@@ -174,6 +265,7 @@ io.on("connection", (socket) => {
       registry.emitRoom(io, room);
     }
     broadcastGame(room);
+    void advanceBotMoves(room);
   });
 
   socket.on("game:return-to-lobby", () => {
@@ -183,23 +275,39 @@ io.on("connection", (socket) => {
     if (room.hostId !== playerId) return;
     room.gameState = null;
     room.phase = "lobby";
-    [...room.players.values()].forEach((p) => (p.ready = false));
+    [...room.players.values()].forEach((p) => {
+      p.ready = false;
+      p.isAi = false;
+    });
     registry.emitRoom(io, room);
   });
 
   socket.on("disconnect", () => {
     if (!roomCode || !playerId) return;
-    const room = registry.setConnected(roomCode, playerId, false);
-    if (room) registry.emitRoom(io, room);
-    setTimeout(() => {
-      const r = roomCode ? registry.getRoom(roomCode) : null;
-      if (!r || !playerId) return;
-      const p = r.players.get(playerId);
-      if (p && !p.connected) {
-        const after = registry.leaveRoom(r.code, playerId);
-        if (after) registry.emitRoom(io, after);
-      }
-    }, 30_000);
+    const room = registry.getRoom(roomCode);
+    if (!room) return;
+
+    registry.setConnected(roomCode, playerId, false);
+
+    if (room.phase === "playing" && room.gameState) {
+      // Player vanished mid-game → AI takes over their seat
+      registry.setAiControlled(room, playerId, true);
+      registry.emitRoom(io, room);
+      broadcastGame(room);
+      void advanceBotMoves(room);
+    } else {
+      // Lobby/finished: keep slot for 30s grace then remove
+      registry.emitRoom(io, room);
+      setTimeout(() => {
+        const r = roomCode ? registry.getRoom(roomCode) : null;
+        if (!r || !playerId) return;
+        const p = r.players.get(playerId);
+        if (p && !p.connected) {
+          const after = registry.leaveRoom(r.code, playerId);
+          if (after) registry.emitRoom(io, after);
+        }
+      }, 30_000);
+    }
   });
 });
 

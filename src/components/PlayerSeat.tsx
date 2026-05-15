@@ -58,6 +58,14 @@ export function PlayerSeat({
           <span className="text-[11px] font-semibold truncate">
             {player.name}
           </span>
+          {player.isBot && (
+            <span
+              title="AI-controlled"
+              className="text-[8px] font-bold tracking-wider text-fuchsia-300 bg-fuchsia-500/20 px-1 py-px rounded leading-none"
+            >
+              AI
+            </span>
+          )}
           {isDealer && (
             <span
               title="Dealer"
@@ -100,6 +108,14 @@ export function PlayerSeat({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1">
           <span className="text-sm font-semibold truncate">{player.name}</span>
+          {player.isBot && (
+            <span
+              title="AI-controlled"
+              className="chip bg-fuchsia-500/20 text-fuchsia-300 px-1.5 py-0 text-[10px] font-bold tracking-wider"
+            >
+              AI
+            </span>
+          )}
           {isDealer && (
             <span
               title="Dealer"

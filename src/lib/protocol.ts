@@ -8,6 +8,12 @@ export interface RoomPlayer {
   connected: boolean;
   isHost: boolean;
   seat: number;
+  /**
+   * True when this seat is currently being played by a server-side AI bot.
+   * Happens when a human player disconnects or explicitly leaves during an
+   * in-progress game. Cleared when they reconnect.
+   */
+  isAi: boolean;
 }
 
 export interface RoomPublic {
