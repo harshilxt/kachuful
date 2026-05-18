@@ -24,6 +24,7 @@ export function MpLobbyScreen() {
     kickPlayer,
     toggleReady,
     startGame,
+    updateSettings,
     errorMessage,
     clearError,
   } = useMpStore();
@@ -265,6 +266,63 @@ export function MpLobbyScreen() {
           </motion.div>
         )}
 
+        {(() => {
+          const playerCount = Math.max(1, room.players.length);
+          const deckCap = Math.floor(52 / playerCount);
+          const effectivePeak = Math.min(room.settings.maxCards, deckCap);
+          const effectiveRounds = 2 * effectivePeak - 1;
+          const capped = room.settings.maxCards > deckCap;
+          return (
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs uppercase tracking-widest text-white/60">
+                  Game Length {!isHost && "· host controls"}
+                </div>
+                <div className="text-[11px] text-white/65">
+                  <span className="text-gold-400 font-semibold">
+                    {effectiveRounds}
+                  </span>{" "}
+                  rounds
+                </div>
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {[2, 3, 4, 5, 6, 7, 8].map((max) => {
+                  const isSelected = room.settings.maxCards === max;
+                  return (
+                    <button
+                      key={max}
+                      disabled={!isHost}
+                      onClick={() =>
+                        isHost && updateSettings({ maxCards: max })
+                      }
+                      className={cn(
+                        "h-11 rounded-md border text-center transition leading-tight",
+                        isSelected
+                          ? "border-gold-400 bg-gold-500/15 text-gold-300 shadow-glow-soft"
+                          : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
+                        !isHost && "cursor-not-allowed opacity-70"
+                      )}
+                      title={`${2 * max - 1} rounds (1 → ${max} → 1)`}
+                    >
+                      <div className="text-sm font-semibold">{max}</div>
+                      <div className="text-[9px] opacity-80">{2 * max - 1}r</div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="text-[10px] text-white/45 mt-1.5">
+                Cards per round: 1 → {effectivePeak} → 1.
+                {capped && (
+                  <span className="text-amber-300/90 ml-1">
+                    Capped to {effectivePeak} by deck size ({playerCount}{" "}
+                    players × {effectivePeak} cards).
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         {isHost ? (
           <button
             onClick={startGame}
@@ -301,8 +359,8 @@ export function MpLobbyScreen() {
         )}
 
         <div className="text-[11px] text-white/40 text-center mt-4">
-          Round 1: 1 card · Round 8: 8 cards · then back down to 1.
-          Trump rotates ♠ → ♥ → ♦ → ♣ → No Trump.
+          Trump rotates ♠ → ♦ → ♣ → ♥ each round. Make exactly your bid:
+          score 10 + bid. Miss it: score 0.
         </div>
       </motion.div>
     </div>

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGameStore } from "../store/gameStore";
 import { useMpStore } from "../store/multiplayerStore";
+import { DEFAULT_SETTINGS } from "../game/engine";
 import { Bot, Crown, Info, Sparkles, Users } from "lucide-react";
 import { cn } from "../lib/utils";
 
@@ -12,9 +13,10 @@ export function HomeScreen() {
   const mpSetName = useMpStore((s) => s.setName);
   const navigate = useNavigate();
   const [showRules, setShowRules] = useState(false);
+  const [maxCards, setMaxCards] = useState(DEFAULT_SETTINGS.maxCards);
 
   const startSinglePlayer = () => {
-    newGame(playerName, numBots);
+    newGame(playerName, numBots, { ...DEFAULT_SETTINGS, maxCards });
     navigate("/play");
   };
 
@@ -62,7 +64,7 @@ export function HomeScreen() {
           />
         </label>
 
-        <div className="mb-5">
+        <div className="mb-4">
           <span className="text-xs uppercase tracking-widest text-white/60">
             Opponents (AI)
           </span>
@@ -84,6 +86,41 @@ export function HomeScreen() {
           </div>
           <div className="text-[11px] text-white/50 mt-1.5 flex items-center gap-1.5">
             <Bot className="w-3 h-3" /> {numBots + 1} players total
+          </div>
+        </div>
+
+        <div className="mb-5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs uppercase tracking-widest text-white/60">
+              Game Length
+            </span>
+            <span className="text-[11px] text-white/65">
+              <span className="text-gold-400 font-semibold">
+                {2 * maxCards - 1}
+              </span>{" "}
+              rounds
+            </span>
+          </div>
+          <div className="grid grid-cols-7 gap-1 mt-2">
+            {[2, 3, 4, 5, 6, 7, 8].map((max) => (
+              <button
+                key={max}
+                onClick={() => setMaxCards(max)}
+                className={cn(
+                  "h-11 rounded-md border text-center transition leading-tight",
+                  maxCards === max
+                    ? "border-gold-400 bg-gold-500/15 text-gold-300 shadow-glow-soft"
+                    : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10"
+                )}
+                title={`${2 * max - 1} rounds (1 → ${max} → 1)`}
+              >
+                <div className="text-sm font-semibold">{max}</div>
+                <div className="text-[9px] opacity-80">{2 * max - 1}r</div>
+              </button>
+            ))}
+          </div>
+          <div className="text-[10px] text-white/50 mt-1.5">
+            Cards per round: 1 → {maxCards} → 1
           </div>
         </div>
 
