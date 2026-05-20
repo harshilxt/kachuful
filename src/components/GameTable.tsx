@@ -8,7 +8,7 @@ import { BiddingPanel } from "./BiddingPanel";
 import { RoundSummary } from "./RoundSummary";
 import { ScoreBoard } from "./ScoreBoard";
 import { currentExpectedPlayerId, getForbiddenDealerBid } from "../game/engine";
-import { legalCards } from "../game/rules";
+import { legalCards, trickWinner } from "../game/rules";
 import { RANK_VALUE } from "../game/deck";
 import { ListOrdered, LogOut, Play, Timer } from "lucide-react";
 import { cn } from "../lib/utils";
@@ -56,6 +56,14 @@ export function GameTable({
   const dealerId = state.players[state.dealerIndex].id;
   const human = state.players.find((p) => p.id === humanId);
   const humanHand = state.hands[humanId] || [];
+
+  // Whoever is currently winning the trick — live-updated as each card is
+  // played. Falls back to the resolved winner once the trick completes.
+  const trickLeaderId =
+    state.trickWinnerId ??
+    (state.currentTrick.length > 0 && state.leadSuit
+      ? trickWinner(state.currentTrick, state.trump, state.leadSuit).playerId
+      : null);
 
   const leader = (() => {
     let best: { id: string; total: number } | null = null;
@@ -219,6 +227,7 @@ export function GameTable({
             trick={state.currentTrick}
             seatGeometry={seatGeometry}
             winnerId={state.trickWinnerId}
+            leaderId={trickLeaderId}
             radius={scale.trickRadius}
           />
         </div>

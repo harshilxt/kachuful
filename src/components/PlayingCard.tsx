@@ -11,7 +11,10 @@ interface Props {
   onClick?: () => void;
   className?: string;
   highlight?: boolean;
+  /** Strong glow — used for the resolved trick winner. */
   glow?: boolean;
+  /** Softer glow — used for "currently winning so far" during the trick. */
+  softGlow?: boolean;
 }
 
 const sizeMap = {
@@ -30,6 +33,7 @@ export function PlayingCard({
   className,
   highlight,
   glow,
+  softGlow,
 }: Props) {
   if (faceDown || !card) {
     return (
@@ -67,6 +71,7 @@ export function PlayingCard({
           sizeMap[size],
           highlight && "ring-2 ring-gold-400 ring-offset-2 ring-offset-felt-700",
           glow && "shadow-glow",
+          softGlow && !glow && "shadow-glow-soft",
           className
         )}
       >
@@ -90,6 +95,7 @@ export function PlayingCard({
         disabled && "opacity-40 grayscale",
         highlight && "ring-2 ring-gold-400 ring-offset-2 ring-offset-felt-700",
         glow && "shadow-glow",
+        softGlow && !glow && "shadow-glow-soft",
         className
       )}
     >

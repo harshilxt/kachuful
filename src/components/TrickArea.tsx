@@ -6,14 +6,23 @@ import { SeatGeometry } from "../lib/seats";
 interface Props {
   trick: PlayedCard[];
   seatGeometry: Record<string, SeatGeometry>;
+  /** Resolved trick winner — set only once the trick is complete. */
   winnerId: string | null;
+  /** Whoever is currently winning while the trick is still in progress. */
+  leaderId?: string | null;
   radius?: number;
 }
 
 const CARD_W = 64;
 const CARD_H = 92;
 
-export function TrickArea({ trick, seatGeometry, winnerId, radius = 55 }: Props) {
+export function TrickArea({
+  trick,
+  seatGeometry,
+  winnerId,
+  leaderId = null,
+  radius = 55,
+}: Props) {
   const containerW = Math.max(260, radius * 2 + CARD_W + 24);
   const containerH = Math.max(200, radius * 2 + CARD_H + 24);
   return (
@@ -25,13 +34,17 @@ export function TrickArea({ trick, seatGeometry, winnerId, radius = 55 }: Props)
       {trick.map((played, i) => {
         const seat = seatGeometry[played.playerId];
         if (!seat) return null;
+        const isWinner = winnerId === played.playerId;
+        const isLeading = !isWinner && leaderId === played.playerId;
+        const zIndex = isWinner ? 100 : isLeading ? 50 : 10 + i;
         return (
           <TrickCard
             key={played.card.id}
             played={played}
             seat={seat}
-            isWinner={winnerId === played.playerId}
-            zIndex={winnerId === played.playerId ? 100 : 10 + i}
+            isWinner={isWinner}
+            isLeading={isLeading}
+            zIndex={zIndex}
           />
         );
       })}
@@ -43,15 +56,16 @@ function TrickCard({
   played,
   seat,
   isWinner,
+  isLeading,
   zIndex,
 }: {
   played: PlayedCard;
   seat: SeatGeometry;
   isWinner: boolean;
+  isLeading: boolean;
   zIndex: number;
 }) {
   const off = seat.trickOffset;
-  // On mount, animate from the player's direction toward the center.
   const [entered, setEntered] = useState(false);
   useEffect(() => {
     const id = requestAnimationFrame(() => {
@@ -60,9 +74,10 @@ function TrickCard({
     return () => cancelAnimationFrame(id);
   }, []);
 
-  // Pre-entry offset: pushed 3.5x farther out in the player's direction.
   const farX = off.x * 3.5;
   const farY = off.y * 3.5;
+
+  const restingScale = isWinner ? 1.1 : isLeading ? 1.05 : 1;
 
   return (
     <div
@@ -73,14 +88,19 @@ function TrickCard({
         zIndex,
         opacity: entered ? 1 : 0,
         transform: entered
-          ? `translate(0, 0) scale(${isWinner ? 1.1 : 1})`
+          ? `translate(0, 0) scale(${restingScale})`
           : `translate(${farX - off.x}px, ${farY - off.y}px) scale(0.6)`,
         transition:
           "transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 260ms ease-out",
       }}
     >
       <div style={{ transform: `rotate(${off.rotation}deg)` }}>
-        <PlayingCard card={played.card} size="md" glow={isWinner} />
+        <PlayingCard
+          card={played.card}
+          size="md"
+          glow={isWinner}
+          softGlow={isLeading}
+        />
       </div>
     </div>
   );
