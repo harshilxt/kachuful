@@ -52,32 +52,7 @@ export const useMpStore = create<MpStore>((set, get) => ({
     let s = get().socket;
     if (s) return s;
     s = getSocket();
-    s.on("connect", () => {
-      set({ connected: true });
-      // If we were already in a room when the socket dropped, automatically
-      // re-emit room:join so the server can re-bind this new socket to our
-      // existing player record (by name). Without this the user appears to
-      // be "frozen" mid-game until they manually leave and rejoin.
-      const { roomCode, name } = get();
-      if (roomCode && name) {
-        s!.emit("room:join", { code: roomCode, name }, (resp) => {
-          if (resp.ok) {
-            set({ playerId: resp.playerId, errorMessage: null });
-          } else {
-            // The room is gone or our slot was already removed —
-            // bail out cleanly.
-            set({
-              room: null,
-              roomCode: null,
-              playerId: null,
-              gameState: null,
-              errorMessage: resp.error || "Lost connection to room",
-            });
-            mpNavigate("/online");
-          }
-        });
-      }
-    });
+    s.on("connect", () => set({ connected: true }));
     s.on("disconnect", () => set({ connected: false }));
     s.on("room:state", (room) => {
       set({ room });
