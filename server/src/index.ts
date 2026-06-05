@@ -286,6 +286,14 @@ io.on("connection", (socket) => {
     if (!roomCode || !playerId) return;
     const room = registry.getRoom(roomCode);
     if (!room) return;
+    const player = room.players.get(playerId);
+    if (!player) return;
+
+    // CRITICAL: if a newer socket has already reclaimed this player's slot
+    // (via the client's auto-rejoin), the player record now points to that
+    // newer socket — NOT this one. Don't touch them; the previous
+    // disconnect was already handled when the new socket reclaimed.
+    if (player.socketId !== socket.id) return;
 
     registry.setConnected(roomCode, playerId, false);
 
@@ -296,13 +304,18 @@ io.on("connection", (socket) => {
       broadcastGame(room);
       void advanceBotMoves(room);
     } else {
-      // Lobby/finished: keep slot for 30s grace then remove
+      // Lobby/finished: keep slot for 30s grace then remove.
+      // Re-check that no newer socket has taken over the slot before
+      // actually evicting them.
       registry.emitRoom(io, room);
+      const disconnectingSocketId = socket.id;
       setTimeout(() => {
         const r = roomCode ? registry.getRoom(roomCode) : null;
         if (!r || !playerId) return;
         const p = r.players.get(playerId);
-        if (p && !p.connected) {
+        if (!p) return;
+        // Still disconnected AND still bound to us → safe to evict
+        if (!p.connected && p.socketId === disconnectingSocketId) {
           const after = registry.leaveRoom(r.code, playerId);
           if (after) registry.emitRoom(io, after);
         }
