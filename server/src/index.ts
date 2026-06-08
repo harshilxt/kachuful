@@ -13,6 +13,8 @@ import {
   startRound,
 } from "../../src/game/engine";
 import { botBid, botPlay } from "../../src/game/ai";
+import { legalCards } from "../../src/game/rules";
+import { RANK_VALUE } from "../../src/game/deck";
 import { RoomRegistry, IOServer, ServerRoom } from "./rooms.ts";
 import { MIN_PLAYERS } from "../../src/lib/protocol";
 
@@ -34,6 +36,73 @@ const sessionByPlayer = new Map<string, { code: string; socketId: string }>();
 
 // Track which rooms have an active bot loop so we don't spawn duplicates
 const botLoopActive = new Set<string>();
+
+// How long the server waits for a human's action before auto-playing for them.
+// AI seats don't use this — the bot loop handles them.
+const TURN_TIMEOUT_MS = 15_000;
+
+// Active per-room turn timers (one per room at a time).
+const turnTimers = new Map<string, NodeJS.Timeout>();
+
+function clearTurnTimer(roomCode: string) {
+  const t = turnTimers.get(roomCode);
+  if (t) {
+    clearTimeout(t);
+    turnTimers.delete(roomCode);
+  }
+}
+
+/**
+ * If the next expected player is a HUMAN, start a server-side timer.
+ * When it expires, the server picks a sensible default action on their
+ * behalf (bid 0/1, or play the lowest legal card) and advances the game.
+ * AI seats are NOT timed — the bot loop already drives them.
+ */
+function scheduleTurnTimer(room: ServerRoom) {
+  clearTurnTimer(room.code);
+  const state = room.gameState;
+  if (!state) return;
+  if (state.phase !== "bidding" && state.phase !== "playing") return;
+  const expectedId = currentExpectedPlayerId(state);
+  if (!expectedId) return;
+  const player = room.players.get(expectedId);
+  if (!player || player.isAi) return;
+
+  // Capture identifiers so we can verify the turn hasn't changed by fire time.
+  const targetTrickLength = state.currentTrick.length;
+  const targetPhase = state.phase;
+
+  const timer = setTimeout(() => {
+    turnTimers.delete(room.code);
+    const r = registry.getRoom(room.code);
+    if (!r || !r.gameState) return;
+    if (r.gameState.phase !== targetPhase) return;
+    if (r.gameState.currentTrick.length !== targetTrickLength) return;
+    const stillExpected = currentExpectedPlayerId(r.gameState);
+    if (stillExpected !== expectedId) return;
+    const stillPlayer = r.players.get(expectedId);
+    if (!stillPlayer || stillPlayer.isAi) return;
+
+    if (r.gameState.phase === "bidding") {
+      const isDealer =
+        r.gameState.players[r.gameState.dealerIndex].id === expectedId;
+      const forbidden = isDealer ? getForbiddenDealerBid(r.gameState) : null;
+      const fallback = forbidden === 0 ? 1 : 0;
+      r.gameState = placeBid(r.gameState, expectedId, fallback);
+    } else {
+      const hand = r.gameState.hands[expectedId] || [];
+      const legal = legalCards(hand, r.gameState.leadSuit);
+      if (legal.length === 0) return;
+      const lowest = [...legal].sort(
+        (a, b) => RANK_VALUE[a.rank] - RANK_VALUE[b.rank]
+      )[0];
+      r.gameState = playCard(r.gameState, expectedId, lowest);
+    }
+    broadcastGame(r);
+    void advanceBotMoves(r);
+  }, TURN_TIMEOUT_MS);
+  turnTimers.set(room.code, timer);
+}
 
 function broadcastGame(room: ServerRoom) {
   if (!room.gameState) return;
@@ -126,6 +195,9 @@ async function advanceBotMoves(room: ServerRoom) {
     }
   } finally {
     botLoopActive.delete(room.code);
+    // Bot loop exited — next active player is either a human (start their
+    // timer) or there's no active turn (no-op inside scheduleTurnTimer).
+    scheduleTurnTimer(room);
   }
 }
 
@@ -186,7 +258,12 @@ io.on("connection", (socket) => {
       socket.leave(`room:${roomCode}`);
       sessionByPlayer.delete(playerId);
       socket.emit("room:left");
-      if (after) registry.emitRoom(io, after);
+      if (after) {
+        registry.emitRoom(io, after);
+      } else {
+        // Room was destroyed — drop any pending timer for it.
+        clearTurnTimer(roomCode);
+      }
     }
     playerId = null;
     roomCode = null;
@@ -273,6 +350,7 @@ io.on("connection", (socket) => {
     const room = registry.getRoom(roomCode);
     if (!room) return;
     if (room.hostId !== playerId) return;
+    clearTurnTimer(roomCode);
     room.gameState = null;
     room.phase = "lobby";
     [...room.players.values()].forEach((p) => {

@@ -8,8 +8,7 @@ import { BiddingPanel } from "./BiddingPanel";
 import { RoundSummary } from "./RoundSummary";
 import { ScoreBoard } from "./ScoreBoard";
 import { currentExpectedPlayerId, getForbiddenDealerBid } from "../game/engine";
-import { legalCards, trickWinner } from "../game/rules";
-import { RANK_VALUE } from "../game/deck";
+import { trickWinner } from "../game/rules";
 import { ListOrdered, LogOut, Play, Timer } from "lucide-react";
 import { cn } from "../lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
@@ -104,24 +103,11 @@ export function GameTable({
     return () => clearInterval(id);
   }, [turnKey, isActiveTurn, expectedId]);
 
-  // Auto-action when MY timer hits 0
-  useEffect(() => {
-    if (timeLeft !== 0) return;
-    if (!isHumanTurn) return;
-    if (state.phase === "bidding") {
-      const fallback = forbidden === 0 ? 1 : 0;
-      onBid(fallback);
-    } else if (state.phase === "playing") {
-      const legal = legalCards(humanHand, state.leadSuit);
-      if (legal.length > 0) {
-        const sorted = [...legal].sort(
-          (a, b) => RANK_VALUE[a.rank] - RANK_VALUE[b.rank]
-        );
-        onPlay(sorted[0].id);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeLeft]);
+  // NOTE: timeout enforcement is now handled by the server. Clients only
+  // count down visually so everyone sees a synchronized "seconds left" chip.
+  // The server times out the active human and submits a default action
+  // (bid 0/1 or lowest legal card) on their behalf — that way a stuck or
+  // disconnected client cannot freeze the whole table.
 
   // ----- Auto-play when only 1 card remains -----
   useEffect(() => {
