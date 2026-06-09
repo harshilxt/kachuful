@@ -74,6 +74,14 @@ sid_session: Dict[str, Dict[str, str]] = {}
 bot_loops: Dict[str, asyncio.Task[Any]] = {}
 # room.code -> asyncio.TimerHandle (the active turn-timeout timer)
 turn_timers: Dict[str, asyncio.TimerHandle] = {}
+# room.code -> asyncio.Task — per-room watchdog. A safety net that polls every
+# 2s and force-plays for a human who's been stuck on the same turn for >=18s.
+# This catches anything that would otherwise leak past the call_later timer
+# (Render dyno throttling, exceptions in the bot loop finally, async races).
+room_watchdogs: Dict[str, asyncio.Task[Any]] = {}
+# log helper — prefixed + flushed so Render logs show it in real time
+def log(msg: str) -> None:
+    print(msg, flush=True)
 
 
 # --- helpers ---
@@ -163,10 +171,134 @@ def _schedule_turn_timer(room: ServerRoom) -> None:
             return
 
         # Schedule the follow-up bot moves + broadcast + next timer.
+        log(f"[timer:{code}] FIRED for {expected_id} phase={target_phase} trick={target_trick_len}")
         asyncio.create_task(_after_state_change(r))
 
     loop = asyncio.get_event_loop()
     turn_timers[code] = loop.call_later(TURN_TIMEOUT_SEC, on_timeout)
+    log(f"[timer:{code}] scheduled for {expected_id} phase={target_phase} trick={target_trick_len}")
+
+
+# Backup-timeout threshold for the watchdog. Slightly larger than
+# TURN_TIMEOUT_SEC so the call_later timer fires first when it works.
+WATCHDOG_TIMEOUT_SEC = 18
+WATCHDOG_TICK_SEC = 2
+
+
+async def _watchdog_loop(code: str) -> None:
+    """Per-room safety net. Polls every WATCHDOG_TICK_SEC.
+
+    If a HUMAN's turn has been unchanged for >= WATCHDOG_TIMEOUT_SEC, the
+    server force-plays a sensible default on their behalf (mirrors what the
+    call_later timer does — but this version can never be 'lost' since it's
+    a re-entrant loop, not a one-shot scheduled callback).
+
+    Exits cleanly on game_over, room destruction, or cancellation.
+    """
+    log(f"[watchdog:{code}] starting")
+    last_turn_key: Optional[str] = None
+    turn_started_at = asyncio.get_running_loop().time()
+    try:
+        while True:
+            await asyncio.sleep(WATCHDOG_TICK_SEC)
+            r = registry.get_room(code)
+            if r is None:
+                log(f"[watchdog:{code}] room gone -> exit")
+                return
+            state = r.game_state
+            if state is None:
+                last_turn_key = None
+                continue
+            if state.phase == "game_over":
+                log(f"[watchdog:{code}] game over -> exit")
+                return
+            if state.phase not in ("bidding", "playing"):
+                # round_summary, trick_resolution etc. don't need the watchdog
+                last_turn_key = None
+                continue
+
+            expected_id = current_expected_player_id(state)
+            if expected_id is None:
+                last_turn_key = None
+                continue
+            player = r.players.get(expected_id)
+            if player is None or player.is_ai:
+                # AI seats are driven by _advance_bot_moves, not the watchdog
+                last_turn_key = None
+                continue
+
+            turn_key = f"{state.round}:{state.phase}:{expected_id}:{len(state.currentTrick)}"
+            now = asyncio.get_running_loop().time()
+
+            if turn_key != last_turn_key:
+                last_turn_key = turn_key
+                turn_started_at = now
+                continue
+
+            elapsed = now - turn_started_at
+            if elapsed < WATCHDOG_TIMEOUT_SEC:
+                continue
+
+            # The same human turn has been stuck for >=18s. Force-play.
+            log(f"[watchdog:{code}] STUCK {turn_key} for {elapsed:.1f}s — forcing auto-play")
+            try:
+                gs = r.game_state
+                if gs.phase == "bidding":
+                    is_dealer = gs.players[gs.dealerIndex].id == expected_id
+                    forbidden = (
+                        get_forbidden_dealer_bid(gs) if is_dealer else None
+                    )
+                    fallback = 1 if forbidden == 0 else 0
+                    r.game_state = place_bid(gs, expected_id, fallback)
+                    log(f"[watchdog:{code}] auto-bid {fallback} for {expected_id}")
+                elif gs.phase == "playing":
+                    hand = gs.hands.get(expected_id, [])
+                    legal = legal_cards(hand, gs.leadSuit)
+                    if not legal:
+                        # Defensive: mark them AI so the bot loop sorts it out.
+                        log(f"[watchdog:{code}] no legal cards for {expected_id} -> mark AI")
+                        registry.set_ai_controlled(r, expected_id, True)
+                        await broadcast_room(r)
+                        await broadcast_game(r)
+                        await _advance_bot_moves(r)
+                        last_turn_key = None
+                        continue
+                    lowest = sorted(legal, key=lambda c: RANK_VALUE[c.rank])[0]
+                    r.game_state = play_card(gs, expected_id, lowest)
+                    log(f"[watchdog:{code}] auto-play {lowest.rank}{lowest.suit} for {expected_id}")
+                else:
+                    continue
+
+                # Clear the call_later timer if it's still hanging around,
+                # then re-broadcast + drive any AI follow-ups.
+                _clear_turn_timer(code)
+                last_turn_key = None
+                await broadcast_game(r)
+                await _advance_bot_moves(r)
+            except Exception as e:
+                log(f"[watchdog:{code}] auto-play crashed: {e!r}")
+                import traceback
+                traceback.print_exc()
+    except asyncio.CancelledError:
+        log(f"[watchdog:{code}] cancelled")
+        raise
+    except Exception as e:
+        log(f"[watchdog:{code}] LOOP CRASHED: {e!r}")
+        import traceback
+        traceback.print_exc()
+
+
+def _start_watchdog(room: ServerRoom) -> None:
+    existing = room_watchdogs.get(room.code)
+    if existing is not None and not existing.done():
+        return
+    room_watchdogs[room.code] = asyncio.create_task(_watchdog_loop(room.code))
+
+
+def _stop_watchdog(code: str) -> None:
+    t = room_watchdogs.pop(code, None)
+    if t is not None and not t.done():
+        t.cancel()
 
 
 async def _after_state_change(room: ServerRoom) -> None:
@@ -256,10 +388,17 @@ async def _advance_bot_moves(room: ServerRoom) -> None:
                     continue
 
                 return
+        except Exception as e:
+            log(f"[bot:{room.code}] LOOP CRASHED: {e!r}")
+            import traceback
+            traceback.print_exc()
         finally:
             bot_loops.pop(room.code, None)
             # Bot loop exited — start the timer for the next human (if any).
-            _schedule_turn_timer(room)
+            try:
+                _schedule_turn_timer(room)
+            except Exception as e:
+                log(f"[bot:{room.code}] schedule_turn_timer FAILED: {e!r}")
 
     bot_loops[room.code] = asyncio.create_task(loop())
 
@@ -272,6 +411,8 @@ async def _start_game(room: ServerRoom) -> None:
     state = start_round(state)
     room.game_state = state
     room.phase = "playing"
+    log(f"[game:{room.code}] STARTED — {len(players)} players, {state.totalRounds} rounds")
+    _start_watchdog(room)
     await broadcast_room(room)
     await _after_state_change(room)
 
@@ -477,6 +618,8 @@ async def on_game_next(sid: str) -> None:
     room.game_state = next_round_or_end(room.game_state)
     if room.game_state.phase == "game_over":
         room.phase = "finished"
+        log(f"[game:{room.code}] GAME OVER")
+        _stop_watchdog(room.code)
         await broadcast_room(room)
     await _after_state_change(room)
 
@@ -492,11 +635,13 @@ async def on_return_to_lobby(sid: str) -> None:
     if room.host_id != sess["player_id"]:
         return
     _clear_turn_timer(room.code)
+    _stop_watchdog(room.code)
     room.game_state = None
     room.phase = "lobby"
     for p in room.players.values():
         p.ready = False
         p.is_ai = False
+    log(f"[game:{room.code}] returned to lobby")
     await broadcast_room(room)
 
 
