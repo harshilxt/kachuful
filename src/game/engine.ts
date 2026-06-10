@@ -17,7 +17,7 @@ import {
 } from "./rules";
 
 export const DEFAULT_SETTINGS: GameSettings = {
-  maxCards: 8,
+  maxCards: 7,
   scoringMode: "ten-plus-bid",
   enforceDealerConstraint: true,
   noTrumpRound: false,

@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Player } from "../game/types";
 import { PlayingCard } from "./PlayingCard";
 import { cn } from "../lib/utils";
-import { Crown } from "lucide-react";
+import { Crown, UserMinus } from "lucide-react";
 import { Side } from "../lib/seats";
 
 interface Props {
@@ -18,6 +18,8 @@ interface Props {
   handAxis: "h" | "v";
   isLeading?: boolean;
   compact?: boolean;
+  /** When provided, renders a kick button (host-only UI) for this seat. */
+  onKick?: () => void;
 }
 
 export function PlayerSeat({
@@ -33,6 +35,7 @@ export function PlayerSeat({
   handAxis,
   isLeading,
   compact = false,
+  onKick,
 }: Props) {
   const made = bid !== null && tricks === bid;
   const overshot = bid !== null && tricks > bid;
@@ -91,6 +94,15 @@ export function PlayerSeat({
           )}
         </div>
       </div>
+      {onKick && (
+        <button
+          onClick={onKick}
+          title={`Kick ${player.name}`}
+          className="w-5 h-5 rounded flex items-center justify-center text-white/40 hover:text-red-300 hover:bg-red-500/15 transition shrink-0"
+        >
+          <UserMinus className="w-3 h-3" />
+        </button>
+      )}
     </motion.div>
   ) : (
     <motion.div
@@ -155,6 +167,15 @@ export function PlayerSeat({
           {total}
         </div>
       </div>
+      {onKick && (
+        <button
+          onClick={onKick}
+          title={`Kick ${player.name}`}
+          className="ml-1 w-6 h-6 rounded-md flex items-center justify-center text-white/40 hover:text-red-300 hover:bg-red-500/15 transition shrink-0"
+        >
+          <UserMinus className="w-3.5 h-3.5" />
+        </button>
+      )}
     </motion.div>
   );
 

@@ -534,13 +534,26 @@ async def on_room_kick(sid: str, data: Dict[str, Any]) -> None:
         )
         return
     target_sid = result.target_socket_id  # type: ignore[union-attr]
-    # Find the kicked socket and notify them
+    room = result.room  # type: ignore[union-attr]
+    log(f"[kick] target={target_id} sid={target_sid} room_phase={room.phase if room else 'destroyed'}")
+    # Boot the kicked socket
     if target_sid in sid_session:
         sid_session.pop(target_sid, None)
     await sio.emit("room:left", to=target_sid)
     await sio.leave_room(target_sid, f"room:{sess['room_code']}")
-    if result.room is not None:  # type: ignore[union-attr]
-        await broadcast_room(result.room)  # type: ignore[union-attr]
+    # Also disconnect them so any retry logic doesn't try to rejoin silently
+    try:
+        await sio.disconnect(target_sid)
+    except Exception:
+        pass
+
+    if room is None:
+        return
+    await broadcast_room(room)
+    # Mid-game kick: AI takes the seat — broadcast game state + drive bots.
+    if room.phase == "playing" and room.game_state is not None:
+        await broadcast_game(room)
+        await _advance_bot_moves(room)
 
 
 @sio.on("room:start")

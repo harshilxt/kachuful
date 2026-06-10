@@ -101,8 +101,8 @@ export function HomeScreen() {
               rounds
             </span>
           </div>
-          <div className="grid grid-cols-7 gap-1 mt-2">
-            {[2, 3, 4, 5, 6, 7, 8].map((max) => (
+          <div className="grid grid-cols-6 gap-1 mt-2">
+            {[2, 3, 4, 5, 6, 7].map((max) => (
               <button
                 key={max}
                 onClick={() => setMaxCards(max)}

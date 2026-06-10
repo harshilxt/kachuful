@@ -26,7 +26,7 @@ from .types import (
 
 
 DEFAULT_SETTINGS = GameSettings(
-    maxCards=8,
+    maxCards=7,
     scoringMode="ten-plus-bid",
     enforceDealerConstraint=True,
     noTrumpRound=False,

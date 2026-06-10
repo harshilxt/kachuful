@@ -25,6 +25,8 @@ interface Props {
   canAcknowledgeRound?: boolean;
   acknowledgeLabel?: string;
   leaveConfirmMessage?: string;
+  /** If provided, host kick UI is rendered on opponent seats. */
+  onKick?: (playerId: string) => void;
 }
 
 const TURN_TIMEOUT_SEC = 15;
@@ -39,6 +41,7 @@ export function GameTable({
   canAcknowledgeRound = true,
   acknowledgeLabel,
   leaveConfirmMessage = "Quit and return to home?",
+  onKick,
 }: Props) {
   const [showScoreboard, setShowScoreboard] = useState(false);
   const vp = useViewport();
@@ -203,6 +206,15 @@ export function GameTable({
                 handAxis={seat.handAxis}
                 isLeading={!allTied && leader?.id === p.id}
                 compact={seat.compact}
+                onKick={
+                  onKick
+                    ? () => {
+                        if (confirm(`Kick ${p.name} from the game?`)) {
+                          onKick(p.id);
+                        }
+                      }
+                    : undefined
+                }
               />
             </div>
           );

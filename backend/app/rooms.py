@@ -8,7 +8,7 @@ from __future__ import annotations
 import random
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Dict, List, Literal, Optional, Set, Tuple
 
 from .game.engine import DEFAULT_SETTINGS
 from .game.types import GameSettings, GameState, Player
@@ -62,6 +62,9 @@ class ServerRoom:
     phase: RoomPhase = "lobby"
     game_state: Optional[GameState] = None
     created_at: float = field(default_factory=time.time)
+    # Names that have been kicked. Stored lowercased. Used to prevent a
+    # kicked player from rejoining by their old name (the reclaim path).
+    banned_names: Set[str] = field(default_factory=set)
 
 
 # ---------- Result types ----------
@@ -134,6 +137,13 @@ class RoomRegistry:
             return JoinFailure(ok=False, error="Room not found")
         trimmed = (name or "Player")[:18]
 
+        # Banned-name guard: a host kick during the game adds the kicked
+        # player's name to banned_names so they can't bounce back in.
+        if trimmed.lower() in room.banned_names:
+            return JoinFailure(
+                ok=False, error="You were removed from this room"
+            )
+
         # Same-name reclaim path: if a player with this name exists,
         # either (a) idempotent same-socket rejoin, (b) refuse with
         # "name taken" if they're a different live socket, or (c) reclaim
@@ -198,25 +208,53 @@ class RoomRegistry:
     def kick_player(
         self, code: str, host_id: str, target_id: str
     ) -> KickSuccess | KickFailure:
+        """Host can kick a player at ANY phase.
+
+        - Lobby: target is fully removed from room.players.
+        - Playing/finished: target stays in the seat (game indexing would
+          break otherwise) but is permanently marked AI, marked
+          disconnected, and their name is added to banned_names so they
+          can't reclaim the seat by rejoining with the same name.
+        """
         room = self._rooms.get(code)
         if not room:
             return KickFailure(ok=False, error="Room not found")
         if room.host_id != host_id:
             return KickFailure(ok=False, error="Only the host can kick")
-        if room.phase != "lobby":
-            return KickFailure(
-                ok=False, error="Can't kick once the game starts"
-            )
         if target_id == host_id:
             return KickFailure(ok=False, error="Host cannot kick themselves")
         target = room.players.get(target_id)
         if not target:
             return KickFailure(ok=False, error="Player not in room")
+
         socket_id = target.socket_id
-        del room.players[target_id]
-        if not room.players:
-            self._rooms.pop(code, None)
-            return KickSuccess(ok=True, room=None, target_socket_id=socket_id)
+
+        if room.phase == "lobby":
+            del room.players[target_id]
+            if not room.players:
+                self._rooms.pop(code, None)
+                return KickSuccess(
+                    ok=True, room=None, target_socket_id=socket_id
+                )
+            return KickSuccess(
+                ok=True, room=room, target_socket_id=socket_id
+            )
+
+        # Mid-game (or post-game finished) kick: keep the seat, ban the name.
+        target.is_ai = True
+        target.connected = False
+        room.banned_names.add(target.name.lower())
+        # Mirror is_ai into the active GameState so the AI badge shows up.
+        if room.game_state is not None:
+            updated_players = []
+            for gp in room.game_state.players:
+                if gp.id == target_id and not gp.isBot:
+                    updated_players.append(gp.model_copy(update={"isBot": True}))
+                else:
+                    updated_players.append(gp)
+            room.game_state = room.game_state.model_copy(
+                update={"players": updated_players}
+            )
         return KickSuccess(ok=True, room=room, target_socket_id=socket_id)
 
     # -- mutators --

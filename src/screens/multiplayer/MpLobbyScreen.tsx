@@ -285,8 +285,8 @@ export function MpLobbyScreen() {
                   rounds
                 </div>
               </div>
-              <div className="grid grid-cols-7 gap-1">
-                {[2, 3, 4, 5, 6, 7, 8].map((max) => {
+              <div className="grid grid-cols-6 gap-1">
+                {[2, 3, 4, 5, 6, 7].map((max) => {
                   const isSelected = room.settings.maxCards === max;
                   return (
                     <button

@@ -11,6 +11,7 @@ export function MpGameScreen() {
     sendPlay,
     acknowledgeRound,
     leaveRoom,
+    kickPlayer,
   } = useMpStore();
   const navigate = useNavigate();
 
@@ -41,6 +42,7 @@ export function MpGameScreen() {
         navigate("/online");
       }}
       leaveConfirmMessage="Leave this room?"
+      onKick={isHost ? kickPlayer : undefined}
     />
   );
 }
