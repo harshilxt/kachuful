@@ -5,7 +5,7 @@ import type { Hand } from "../engine/types";
 
 interface Props {
   hand: Hand;
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   active?: boolean;
   showOutcome?: boolean;
 }
@@ -27,9 +27,15 @@ const OUTCOME_CLASS: Record<string, string> = {
 };
 
 export function HandView({ hand, size = "md", active, showOutcome }: Props) {
-  const compact = size === "sm";
+  const compact = size === "sm" || size === "xs";
   const overlap =
-    size === "lg" ? "-space-x-8" : size === "md" ? "-space-x-7" : "-space-x-6";
+    size === "lg"
+      ? "-space-x-8"
+      : size === "md"
+      ? "-space-x-7"
+      : size === "sm"
+      ? "-space-x-6"
+      : "-space-x-5";
   const isBust = hand.status === "bust" || hand.value > 21;
   const isBj = hand.status === "blackjack";
 

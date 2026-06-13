@@ -5,7 +5,7 @@ import { cn } from "../lib/utils";
 interface Props {
   card?: Card;
   faceDown?: boolean;
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   selectable?: boolean;
   disabled?: boolean;
   onClick?: () => void;
@@ -18,6 +18,7 @@ interface Props {
 }
 
 const sizeMap = {
+  xs: "w-9 h-[52px] text-[11px]",
   sm: "w-12 h-[68px] text-sm",
   md: "w-16 h-[92px] text-base",
   lg: "w-20 h-[112px] text-lg",

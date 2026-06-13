@@ -5,13 +5,19 @@ import type { Dealer } from "../engine/types";
 
 interface Props {
   dealer: Dealer;
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
 }
 
 export function DealerArea({ dealer, size = "md" }: Props) {
-  const compact = size === "sm";
+  const compact = size === "sm" || size === "xs";
   const overlap =
-    size === "lg" ? "-space-x-8" : size === "sm" ? "-space-x-6" : "-space-x-7";
+    size === "lg"
+      ? "-space-x-8"
+      : size === "md"
+      ? "-space-x-7"
+      : size === "sm"
+      ? "-space-x-6"
+      : "-space-x-5";
   const showValue = !dealer.holeHidden && dealer.value > 0;
   const bust = dealer.status === "bust";
   const bj = dealer.status === "blackjack";

@@ -45,7 +45,7 @@ export function BlackjackTable({
   // there, so we must also shrink on short height or the table overflows
   // and the top clips.
   const compact = vp.isMobile || vp.isShortHeight;
-  const cardSize = compact ? "sm" : "md";
+  const cardSize = compact ? "xs" : "md";
 
   const expectedId = expectedPlayerId(state);
   const isMyTurn = expectedId === youId;

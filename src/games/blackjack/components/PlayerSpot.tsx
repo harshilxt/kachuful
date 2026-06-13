@@ -9,7 +9,7 @@ interface Props {
   isHost: boolean;
   activeHandIndex: number | null; // which hand is active, or null
   showOutcome: boolean;
-  cardSize?: "sm" | "md" | "lg";
+  cardSize?: "xs" | "sm" | "md" | "lg";
   onKick?: () => void;
 }
 
@@ -23,7 +23,7 @@ export function PlayerSpot({
   onKick,
 }: Props) {
   const hasCards = player.hands.some((h) => h.cards.length > 0);
-  const compact = cardSize === "sm";
+  const compact = cardSize === "sm" || cardSize === "xs";
 
   return (
     <div
@@ -50,7 +50,7 @@ export function PlayerSpot({
         <div
           className={cn(
             "flex items-center justify-center",
-            compact ? "h-[68px]" : "h-[92px]"
+            compact ? "h-[52px]" : "h-[92px]"
           )}
         >
           {player.pendingBet ? (
