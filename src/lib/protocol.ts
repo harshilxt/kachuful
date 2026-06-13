@@ -1,4 +1,10 @@
-import type { GameState, GameSettings, Card } from "../game/types";
+import type { GameState, GameSettings, Card } from "../games/kachuful/engine/types";
+import type { BjGameState } from "../games/blackjack/engine/types";
+
+export type GameType = "kachuful" | "blackjack";
+
+/** Either game's state — the active game is determined by RoomPublic.gameType. */
+export type AnyGameState = GameState | BjGameState;
 
 export interface RoomPlayer {
   id: string;
@@ -19,8 +25,9 @@ export interface RoomPlayer {
 export interface RoomPublic {
   code: string;
   hostId: string;
+  gameType: GameType;
   players: RoomPlayer[];
-  settings: GameSettings;
+  settings: Record<string, unknown>;
   phase: "lobby" | "playing" | "finished";
   maxPlayers: number;
   minPlayers: number;
@@ -32,14 +39,20 @@ export interface ServerToClientEvents {
   "room:joined": (data: { code: string; playerId: string }) => void;
   "room:left": () => void;
   "room:error": (data: { message: string }) => void;
-  "game:state": (state: GameState) => void;
+  "game:state": (state: AnyGameState) => void;
   "game:ended": () => void;
 }
 
 export interface ClientToServerEvents {
   "room:create": (
-    data: { name: string; settings?: Partial<GameSettings> },
-    ack: (response: { ok: boolean; code?: string; playerId?: string; error?: string }) => void
+    data: { name: string; gameType?: GameType; settings?: Partial<GameSettings> },
+    ack: (response: {
+      ok: boolean;
+      code?: string;
+      playerId?: string;
+      gameType?: GameType;
+      error?: string;
+    }) => void
   ) => void;
   "room:join": (
     data: { code: string; name: string },
@@ -48,10 +61,12 @@ export interface ClientToServerEvents {
   "room:leave": () => void;
   "room:ready": (data: { ready: boolean }) => void;
   "room:start": () => void;
-  "room:settings": (data: { settings: Partial<GameSettings> }) => void;
+  "room:settings": (data: { settings: Record<string, unknown> }) => void;
   "room:kick": (data: { playerId: string }) => void;
   "game:bid": (data: { bid: number }) => void;
   "game:play": (data: { card: Card }) => void;
+  // Generic action channel used by Blackjack (bet/hit/stand/double/split).
+  "game:action": (data: Record<string, unknown>) => void;
   "game:next": () => void;
   "game:return-to-lobby": () => void;
 }

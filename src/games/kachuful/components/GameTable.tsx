@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { GameState } from "../game/types";
+import { GameState } from "../engine/types";
 import { TrumpIndicator } from "./TrumpIndicator";
 import { PlayerSeat } from "./PlayerSeat";
 import { TrickArea } from "./TrickArea";
@@ -7,13 +7,13 @@ import { Hand } from "./Hand";
 import { BiddingPanel } from "./BiddingPanel";
 import { RoundSummary } from "./RoundSummary";
 import { ScoreBoard } from "./ScoreBoard";
-import { currentExpectedPlayerId, getForbiddenDealerBid } from "../game/engine";
-import { trickWinner } from "../game/rules";
+import { currentExpectedPlayerId, getForbiddenDealerBid } from "../engine/engine";
+import { trickWinner } from "../engine/rules";
 import { ListOrdered, LogOut, Play, Timer } from "lucide-react";
-import { cn } from "../lib/utils";
+import { cn } from "../../../lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
-import { computeSeatGeometry, layoutScale } from "../lib/seats";
-import { useViewport } from "../lib/useViewport";
+import { computeSeatGeometry, layoutScale } from "../../../lib/seats";
+import { useViewport } from "../../../lib/useViewport";
 
 interface Props {
   state: GameState;

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { GameSettings, GameState, Player } from "../game/types";
+import { GameSettings, GameState, Player } from "../games/kachuful/engine/types";
 import {
   DEFAULT_SETTINGS,
   createInitialState,
@@ -10,8 +10,8 @@ import {
   playCard,
   resolveTrick,
   startRound,
-} from "../game/engine";
-import { botBid, botPlay } from "../game/ai";
+} from "../games/kachuful/engine/engine";
+import { botBid, botPlay } from "../games/kachuful/engine/ai";
 import { sleep, uid } from "../lib/utils";
 
 const BOT_AVATARS = ["🦊", "🐼", "🦁", "🐯", "🐺", "🦉", "🦅"];

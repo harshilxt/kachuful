@@ -1,8 +1,8 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Card, Suit } from "../game/types";
-import { PlayingCard } from "./PlayingCard";
-import { legalCards } from "../game/rules";
-import { cn } from "../lib/utils";
+import { Card, Suit } from "../engine/types";
+import { PlayingCard } from "../../../components/PlayingCard";
+import { legalCards } from "../engine/rules";
+import { cn } from "../../../lib/utils";
 
 interface Props {
   cards: Card[];

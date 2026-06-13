@@ -266,62 +266,104 @@ export function MpLobbyScreen() {
           </motion.div>
         )}
 
-        {(() => {
-          const playerCount = Math.max(1, room.players.length);
-          const deckCap = Math.floor(52 / playerCount);
-          const effectivePeak = Math.min(room.settings.maxCards, deckCap);
-          const effectiveRounds = 2 * effectivePeak - 1;
-          const capped = room.settings.maxCards > deckCap;
-          return (
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-xs uppercase tracking-widest text-white/60">
-                  Game Length {!isHost && "· host controls"}
+        {room.gameType === "blackjack"
+          ? (() => {
+              const s = room.settings as {
+                startingChips?: number;
+                minBet?: number;
+                maxBet?: number;
+              };
+              return (
+                <div className="mb-4 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm">
+                  <div className="text-xs uppercase tracking-widest text-white/60 mb-1.5">
+                    Blackjack
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div>
+                      <div className="text-gold-300 font-bold">
+                        ${s.startingChips ?? 1000}
+                      </div>
+                      <div className="text-[10px] text-white/50">Chips</div>
+                    </div>
+                    <div>
+                      <div className="text-gold-300 font-bold">
+                        ${s.minBet ?? 10}
+                      </div>
+                      <div className="text-[10px] text-white/50">Min bet</div>
+                    </div>
+                    <div>
+                      <div className="text-gold-300 font-bold">
+                        ${s.maxBet ?? 500}
+                      </div>
+                      <div className="text-[10px] text-white/50">Max bet</div>
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-white/45 mt-2">
+                    Dealer stands on 17 · Blackjack pays 3:2 · up to 7 players.
+                  </div>
                 </div>
-                <div className="text-[11px] text-white/65">
-                  <span className="text-gold-400 font-semibold">
-                    {effectiveRounds}
-                  </span>{" "}
-                  rounds
+              );
+            })()
+          : (() => {
+              const maxCards =
+                (room.settings as { maxCards?: number }).maxCards ?? 7;
+              const playerCount = Math.max(1, room.players.length);
+              const deckCap = Math.floor(52 / playerCount);
+              const effectivePeak = Math.min(maxCards, deckCap);
+              const effectiveRounds = 2 * effectivePeak - 1;
+              const capped = maxCards > deckCap;
+              return (
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-xs uppercase tracking-widest text-white/60">
+                      Game Length {!isHost && "· host controls"}
+                    </div>
+                    <div className="text-[11px] text-white/65">
+                      <span className="text-gold-400 font-semibold">
+                        {effectiveRounds}
+                      </span>{" "}
+                      rounds
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-6 gap-1">
+                    {[2, 3, 4, 5, 6, 7].map((max) => {
+                      const isSelected = maxCards === max;
+                      return (
+                        <button
+                          key={max}
+                          disabled={!isHost}
+                          onClick={() =>
+                            isHost && updateSettings({ maxCards: max })
+                          }
+                          className={cn(
+                            "h-11 rounded-md border text-center transition leading-tight",
+                            isSelected
+                              ? "border-gold-400 bg-gold-500/15 text-gold-300 shadow-glow-soft"
+                              : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
+                            !isHost && "cursor-not-allowed opacity-70"
+                          )}
+                          title={`${2 * max - 1} rounds (1 → ${max} → 1)`}
+                        >
+                          <div className="text-sm font-semibold">{max}</div>
+                          <div className="text-[9px] opacity-80">
+                            {2 * max - 1}r
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="text-[10px] text-white/45 mt-1.5">
+                    Cards per round: 1 → {effectivePeak} → 1.
+                    {capped && (
+                      <span className="text-amber-300/90 ml-1">
+                        Capped to {effectivePeak} by deck size ({playerCount}{" "}
+                        players × {effectivePeak} cards).
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-6 gap-1">
-                {[2, 3, 4, 5, 6, 7].map((max) => {
-                  const isSelected = room.settings.maxCards === max;
-                  return (
-                    <button
-                      key={max}
-                      disabled={!isHost}
-                      onClick={() =>
-                        isHost && updateSettings({ maxCards: max })
-                      }
-                      className={cn(
-                        "h-11 rounded-md border text-center transition leading-tight",
-                        isSelected
-                          ? "border-gold-400 bg-gold-500/15 text-gold-300 shadow-glow-soft"
-                          : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10",
-                        !isHost && "cursor-not-allowed opacity-70"
-                      )}
-                      title={`${2 * max - 1} rounds (1 → ${max} → 1)`}
-                    >
-                      <div className="text-sm font-semibold">{max}</div>
-                      <div className="text-[9px] opacity-80">{2 * max - 1}r</div>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="text-[10px] text-white/45 mt-1.5">
-                Cards per round: 1 → {effectivePeak} → 1.
-                {capped && (
-                  <span className="text-amber-300/90 ml-1">
-                    Capped to {effectivePeak} by deck size ({playerCount}{" "}
-                    players × {effectivePeak} cards).
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })()}
+              );
+            })()}
 
         {isHost ? (
           <button
@@ -359,8 +401,9 @@ export function MpLobbyScreen() {
         )}
 
         <div className="text-[11px] text-white/40 text-center mt-4">
-          Trump rotates ♠ → ♦ → ♣ → ♥ each round. Make exactly your bid:
-          score 10 + bid. Miss it: score 0.
+          {room.gameType === "blackjack"
+            ? "Place a bet, then beat the dealer's hand without going over 21."
+            : "Trump rotates ♠ → ♦ → ♣ → ♥ each round. Make exactly your bid: score 10 + bid. Miss it: score 0."}
         </div>
       </motion.div>
     </div>

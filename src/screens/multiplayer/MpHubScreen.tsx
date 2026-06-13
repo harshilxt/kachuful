@@ -4,12 +4,12 @@ import { useMpStore } from "../../store/multiplayerStore";
 import { ArrowLeft, KeyRound, Plus } from "lucide-react";
 
 export function MpHubScreen() {
-  const { reset } = useMpStore();
+  const { reset, pendingGameType } = useMpStore();
   const navigate = useNavigate();
 
   const handleBack = () => {
     reset();
-    navigate("/");
+    navigate(`/game/${pendingGameType}`);
   };
 
   return (
@@ -31,7 +31,7 @@ export function MpHubScreen() {
       >
         <div className="text-center mb-6">
           <div className="text-xs uppercase tracking-[0.3em] text-white/60">
-            Online Multiplayer
+            {pendingGameType === "blackjack" ? "Blackjack" : "Kachu Ful"} · Online
           </div>
           <h1 className="font-display text-3xl font-bold mt-1 bg-gradient-to-b from-gold-400 to-gold-700 bg-clip-text text-transparent">
             Play with friends

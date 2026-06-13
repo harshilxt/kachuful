@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { useGameStore } from "../store/gameStore";
+import { useGameStore } from "../../../store/gameStore";
 import { GameTable } from "../components/GameTable";
 
 export function GameScreen() {

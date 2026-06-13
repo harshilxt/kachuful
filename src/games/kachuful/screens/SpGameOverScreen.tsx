@@ -1,21 +1,25 @@
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
-import { useMpStore } from "../../store/multiplayerStore";
-import { leaderboard } from "../../game/engine";
+import { Navigate, useNavigate } from "react-router-dom";
+import { useGameStore } from "../../../store/gameStore";
+import { leaderboard } from "../engine/engine";
 import { Crown, Home, RefreshCw } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { cn } from "../../../lib/utils";
 
-export function MpGameOverScreen() {
-  const { gameState, room, playerId, returnToLobby, leaveRoom } = useMpStore();
+export function GameOverScreen() {
+  const { state, resetGame, newGame, playerName, numBots } = useGameStore();
   const navigate = useNavigate();
-  const handleLeave = () => {
-    leaveRoom();
-    navigate("/online");
-  };
-  if (!gameState) return null;
-  const board = leaderboard(gameState);
+  if (!state) return <Navigate to="/" replace />;
+  const board = leaderboard(state);
   const winner = board[0];
-  const isHost = room?.hostId === playerId;
+
+  const playAgain = () => {
+    newGame(playerName, numBots);
+    navigate("/play");
+  };
+  const goHome = () => {
+    resetGame();
+    navigate("/");
+  };
 
   return (
     <div className="min-h-screen relative table-felt flex items-center justify-center p-4 overflow-hidden">
@@ -61,14 +65,7 @@ export function MpGameOverScreen() {
                 {i + 1}
               </div>
               <div className="text-2xl">{entry.player.avatar}</div>
-              <div className="flex-1 font-medium">
-                {entry.player.name}
-                {entry.player.id === playerId && (
-                  <span className="chip bg-gold-500/20 text-gold-300 text-[10px] ml-2">
-                    You
-                  </span>
-                )}
-              </div>
+              <div className="flex-1 font-medium">{entry.player.name}</div>
               {i === 0 && <Crown className="w-4 h-4 text-gold-400" />}
               <div className="font-bold text-gold-400">{entry.total}</div>
             </motion.div>
@@ -76,17 +73,11 @@ export function MpGameOverScreen() {
         </div>
 
         <div className="grid grid-cols-2 gap-2 mt-6">
-          {isHost ? (
-            <button onClick={returnToLobby} className="btn-primary">
-              <RefreshCw className="w-4 h-4" /> Play Again
-            </button>
-          ) : (
-            <button disabled className="btn-primary">
-              Waiting for host…
-            </button>
-          )}
-          <button onClick={handleLeave} className="btn-ghost">
-            <Home className="w-4 h-4" /> Leave Room
+          <button onClick={playAgain} className="btn-primary">
+            <RefreshCw className="w-4 h-4" /> Play Again
+          </button>
+          <button onClick={goHome} className="btn-ghost">
+            <Home className="w-4 h-4" /> Home
           </button>
         </div>
       </motion.div>

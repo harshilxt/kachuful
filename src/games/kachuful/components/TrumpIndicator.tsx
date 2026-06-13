@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
-import { SUIT_COLOR, SUIT_GLYPH, SUIT_LABEL, Suit } from "../game/types";
-import { cn } from "../lib/utils";
+import { SUIT_COLOR, SUIT_GLYPH, SUIT_LABEL, Suit } from "../engine/types";
+import { cn } from "../../../lib/utils";
 
 interface Props {
   trump: Suit | null;

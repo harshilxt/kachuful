@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import { useMpStore } from "../../store/multiplayerStore";
-import { GameTable } from "../../components/GameTable";
+import { useMpStore } from "../../../store/multiplayerStore";
+import { GameTable } from "../components/GameTable";
+import type { GameState } from "../engine/types";
 
 export function MpGameScreen() {
   const {
@@ -23,15 +24,18 @@ export function MpGameScreen() {
     );
   }
 
+  // This screen only renders for Kachu Ful rooms (RoomShell dispatches by
+  // gameType), so the union state is safely a Kachu Ful GameState here.
+  const state = gameState as GameState;
   const isHost = room?.hostId === playerId;
 
   return (
     <GameTable
-      state={gameState}
+      state={state}
       humanId={playerId}
       onBid={sendBid}
       onPlay={(cardId) => {
-        const card = gameState.hands[playerId]?.find((c) => c.id === cardId);
+        const card = state.hands[playerId]?.find((c) => c.id === cardId);
         if (card) sendPlay(card);
       }}
       onAcknowledgeRound={acknowledgeRound}

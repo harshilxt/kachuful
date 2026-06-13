@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
-import { GameState, SUIT_COLOR, SUIT_GLYPH } from "../game/types";
-import { cn } from "../lib/utils";
+import { GameState, SUIT_COLOR, SUIT_GLYPH } from "../engine/types";
+import { cn } from "../../../lib/utils";
 import { X } from "lucide-react";
 
 interface Props {

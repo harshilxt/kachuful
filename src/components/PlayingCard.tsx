@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Card, SUIT_COLOR, SUIT_GLYPH } from "../game/types";
+import { Card, SUIT_COLOR, SUIT_GLYPH } from "../games/kachuful/engine/types";
 import { cn } from "../lib/utils";
 
 interface Props {

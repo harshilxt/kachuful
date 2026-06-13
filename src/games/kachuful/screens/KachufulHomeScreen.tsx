@@ -1,16 +1,17 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useGameStore } from "../store/gameStore";
-import { useMpStore } from "../store/multiplayerStore";
-import { DEFAULT_SETTINGS } from "../game/engine";
-import { Bot, Crown, Info, Sparkles, Users } from "lucide-react";
-import { cn } from "../lib/utils";
+import { useGameStore } from "../../../store/gameStore";
+import { useMpStore } from "../../../store/multiplayerStore";
+import { DEFAULT_SETTINGS } from "../engine/engine";
+import { ArrowLeft, Bot, Crown, Info, Sparkles, Users } from "lucide-react";
+import { cn } from "../../../lib/utils";
 
-export function HomeScreen() {
+export function KachufulHomeScreen() {
   const { playerName, setPlayerName, numBots, setNumBots, newGame } =
     useGameStore();
   const mpSetName = useMpStore((s) => s.setName);
+  const setPendingGameType = useMpStore((s) => s.setPendingGameType);
   const navigate = useNavigate();
   const [showRules, setShowRules] = useState(false);
   const [maxCards, setMaxCards] = useState(DEFAULT_SETTINGS.maxCards);
@@ -22,6 +23,7 @@ export function HomeScreen() {
 
   const goMultiplayer = () => {
     mpSetName(playerName);
+    setPendingGameType("kachuful");
     navigate("/online");
   };
 
@@ -30,12 +32,19 @@ export function HomeScreen() {
       <div className="absolute inset-0 table-felt" />
       <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_20%_30%,rgba(230,193,119,.4),transparent_40%),radial-gradient(circle_at_80%_70%,rgba(91,156,125,.5),transparent_40%)]" />
 
+      <button
+        onClick={() => navigate("/")}
+        className="absolute top-4 left-4 z-10 btn-ghost"
+      >
+        <ArrowLeft className="w-4 h-4" /> Games
+      </button>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="panel relative w-full max-w-md p-7"
       >
-        <div className="text-center mb-6">
+        <div className="text-center mb-5">
           <motion.div
             animate={{ rotate: [-3, 3, -3] }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
@@ -43,7 +52,7 @@ export function HomeScreen() {
           >
             🃏
           </motion.div>
-          <h1 className="font-display text-4xl font-bold tracking-wide bg-gradient-to-b from-gold-400 to-gold-700 bg-clip-text text-transparent">
+          <h1 className="font-display text-3xl font-bold tracking-wide bg-gradient-to-b from-gold-400 to-gold-700 bg-clip-text text-transparent">
             KACHU FUL
           </h1>
           <div className="text-xs uppercase tracking-[0.3em] text-white/60 mt-1">
@@ -119,9 +128,6 @@ export function HomeScreen() {
               </button>
             ))}
           </div>
-          <div className="text-[10px] text-white/50 mt-1.5">
-            Cards per round: 1 → {maxCards} → 1
-          </div>
         </div>
 
         <button
@@ -130,11 +136,7 @@ export function HomeScreen() {
         >
           <Sparkles className="w-4 h-4" /> Play vs AI
         </button>
-
-        <button
-          onClick={goMultiplayer}
-          className="btn-ghost w-full mt-2"
-        >
+        <button onClick={goMultiplayer} className="btn-ghost w-full mt-2">
           <Users className="w-4 h-4" /> Play Online with Friends
         </button>
 
@@ -172,25 +174,22 @@ function RulesModal({ onClose }: { onClose: () => void }) {
         <div className="space-y-3 text-sm text-white/85 leading-relaxed">
           <p>
             <b>Goal:</b> Win <i>exactly</i> the number of tricks you bid each
-            round — no more, no fewer. Make your bid: score{" "}
+            round. Make your bid: score{" "}
             <span className="text-gold-400 font-semibold">10 + bid</span>. Miss:
             score 0.
           </p>
           <p>
-            <b>Rounds:</b> The deal grows from 1 card up to 8, then back down.
-            Trump rotates each round in the order ♠ ♥ ♦ ♣ → No Trump.
+            <b>Rounds:</b> The deal grows from 1 card up to the chosen peak,
+            then back down. Trump rotates ♠ → ♦ → ♣ → ♥ each round.
           </p>
           <p>
-            <b>Bidding:</b> Going clockwise from the dealer's left, each player
-            bids how many tricks they'll win. The dealer bids last and{" "}
-            <b className="text-red-300">cannot</b> make the total bids equal
-            the total tricks (someone must fail).
+            <b>Bidding:</b> Clockwise from the dealer's left. The dealer bids
+            last and <b className="text-red-300">cannot</b> make total bids
+            equal the trick count.
           </p>
           <p>
-            <b>Playing:</b> The player left of the dealer leads first. Others
-            must follow the led suit if they can. If not, play any card,
-            including trump. Highest trump wins, otherwise highest card of the
-            led suit. Trick winner leads next.
+            <b>Playing:</b> Follow the led suit if you can. Highest trump wins,
+            else highest card of the led suit. Trick winner leads next.
           </p>
           <p>
             <b>End:</b> After all rounds, the highest total wins. 👑

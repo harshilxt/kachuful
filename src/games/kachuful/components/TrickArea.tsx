@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { PlayedCard } from "../game/types";
-import { PlayingCard } from "./PlayingCard";
-import { SeatGeometry } from "../lib/seats";
+import { PlayedCard } from "../engine/types";
+import { PlayingCard } from "../../../components/PlayingCard";
+import { SeatGeometry } from "../../../lib/seats";
 
 interface Props {
   trick: PlayedCard[];

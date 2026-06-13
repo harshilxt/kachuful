@@ -1,4 +1,4 @@
-import { Player } from "../game/types";
+import { Player } from "../games/kachuful/engine/types";
 
 export type Side = "top" | "right" | "bottom" | "left";
 

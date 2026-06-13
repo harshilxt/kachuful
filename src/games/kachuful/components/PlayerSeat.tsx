@@ -1,9 +1,9 @@
 import { motion } from "framer-motion";
-import { Player } from "../game/types";
-import { PlayingCard } from "./PlayingCard";
-import { cn } from "../lib/utils";
+import { Player } from "../engine/types";
+import { PlayingCard } from "../../../components/PlayingCard";
+import { cn } from "../../../lib/utils";
 import { Crown, UserMinus } from "lucide-react";
-import { Side } from "../lib/seats";
+import { Side } from "../../../lib/seats";
 
 interface Props {
   player: Player;

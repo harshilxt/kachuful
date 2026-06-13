@@ -8,10 +8,11 @@ from __future__ import annotations
 import random
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Literal, Optional, Set, Tuple
+from typing import Any, Dict, List, Literal, Optional, Set, Tuple
 
-from .game.engine import DEFAULT_SETTINGS
-from .game.types import GameSettings, GameState, Player
+from .games.kachuful import DEFAULT_SETTINGS as KACHUFUL_DEFAULTS
+from .games.kachuful.types import GameSettings, GameState, Player
+from .games.blackjack import DEFAULT_SETTINGS as BLACKJACK_DEFAULTS
 
 
 # Visible to clients
@@ -21,8 +22,20 @@ AVATARS: List[str] = ["🦊", "🐼", "🦁", "🐯", "🐺", "🦉"]
 _CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 
 ROOM_CODE_LENGTH = 6
-MAX_PLAYERS = 26  # 26 * 2 cards = full deck, our hard ceiling
+MAX_PLAYERS = 26  # 26 * 2 cards = full deck, our hard ceiling (Kachu Ful)
 MIN_PLAYERS = 2
+
+# Per-game player limits + default settings, keyed by game_type.
+GAME_LIMITS: Dict[str, Dict[str, int]] = {
+    "kachuful": {"min": 2, "max": 26},
+    "blackjack": {"min": 1, "max": 7},
+}
+
+
+def _default_settings_for(game_type: str):
+    if game_type == "blackjack":
+        return BLACKJACK_DEFAULTS.model_copy()
+    return KACHUFUL_DEFAULTS.model_copy()
 
 
 def _generate_code() -> str:
@@ -57,11 +70,18 @@ class RoomPlayerInternal:
 class ServerRoom:
     code: str
     host_id: str
+    # Which game this room is playing. Defaults to kachuful for backward
+    # compatibility — future rooms can pass game_type="blackjack" etc.
+    game_type: str = "kachuful"
     players: Dict[str, RoomPlayerInternal] = field(default_factory=dict)
-    settings: GameSettings = field(default_factory=lambda: DEFAULT_SETTINGS.model_copy())
+    # Settings type varies by game (GameSettings for kachuful, BjSettings
+    # for blackjack). Typed Any to allow either.
+    settings: Any = field(default_factory=lambda: KACHUFUL_DEFAULTS.model_copy())
     phase: RoomPhase = "lobby"
-    game_state: Optional[GameState] = None
+    game_state: Optional[Any] = None
     created_at: float = field(default_factory=time.time)
+    min_players: int = MIN_PLAYERS
+    max_players: int = MAX_PLAYERS
     # Names that have been kicked. Stored lowercased. Used to prevent a
     # kicked player from rejoining by their old name (the reclaim path).
     banned_names: Set[str] = field(default_factory=set)
@@ -105,8 +125,13 @@ class RoomRegistry:
     # -- create / join / leave --
 
     def create_room(
-        self, host_name: str, host_socket_id: str
+        self,
+        host_name: str,
+        host_socket_id: str,
+        game_type: str = "kachuful",
     ) -> Tuple[ServerRoom, RoomPlayerInternal]:
+        if game_type not in GAME_LIMITS:
+            game_type = "kachuful"
         code = _generate_code()
         while code in self._rooms:
             code = _generate_code()
@@ -122,7 +147,15 @@ class RoomRegistry:
             is_ai=False,
             socket_id=host_socket_id,
         )
-        room = ServerRoom(code=code, host_id=player_id)
+        limits = GAME_LIMITS[game_type]
+        room = ServerRoom(
+            code=code,
+            host_id=player_id,
+            game_type=game_type,
+            settings=_default_settings_for(game_type),
+            min_players=limits["min"],
+            max_players=limits["max"],
+        )
         room.players[player_id] = player
         self._rooms[code] = room
         return room, player
@@ -169,10 +202,10 @@ class RoomRegistry:
 
         if room.phase != "lobby":
             return JoinFailure(ok=False, error="Game already in progress")
-        if len(room.players) >= MAX_PLAYERS:
+        if len(room.players) >= room.max_players:
             return JoinFailure(
                 ok=False,
-                error=f"Room full ({MAX_PLAYERS} players max — deck size limit)",
+                error=f"Room full ({room.max_players} players max)",
             )
 
         seat = len(room.players)
@@ -285,7 +318,8 @@ class RoomRegistry:
         merged.update(
             {k: v for k, v in partial_settings.items() if v is not None}
         )
-        room.settings = GameSettings.model_validate(merged)
+        # Re-validate using the model class that matches this game.
+        room.settings = type(room.settings).model_validate(merged)
         return room
 
     def set_connected(
@@ -334,6 +368,7 @@ class RoomRegistry:
         return {
             "code": room.code,
             "hostId": room.host_id,
+            "gameType": room.game_type,
             "players": [
                 {
                     "id": p.id,
@@ -349,8 +384,8 @@ class RoomRegistry:
             ],
             "settings": room.settings.model_dump(),
             "phase": room.phase,
-            "maxPlayers": MAX_PLAYERS,
-            "minPlayers": MIN_PLAYERS,
+            "maxPlayers": room.max_players,
+            "minPlayers": room.min_players,
             "createdAt": int(room.created_at * 1000),
         }
 

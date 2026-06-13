@@ -5,16 +5,19 @@ import { useMpStore } from "../../store/multiplayerStore";
 import { ArrowLeft, Loader2, Sparkles, AlertCircle } from "lucide-react";
 
 export function MpCreateScreen() {
-  const { name, setName, createRoom, pending, errorMessage } = useMpStore();
+  const { name, setName, createRoom, pending, errorMessage, pendingGameType } =
+    useMpStore();
   const navigate = useNavigate();
   const [localName, setLocalName] = useState(name || "");
+
+  const gameLabel = pendingGameType === "blackjack" ? "Blackjack" : "Kachu Ful";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!localName.trim()) return;
     setName(localName);
     try {
-      const code = await createRoom(localName);
+      const code = await createRoom(localName, pendingGameType);
       navigate(`/room/${code}`);
     } catch {}
   };
@@ -38,7 +41,7 @@ export function MpCreateScreen() {
       >
         <div className="text-center mb-5">
           <div className="text-xs uppercase tracking-[0.3em] text-white/60">
-            Create Room
+            Create {gameLabel} Room
           </div>
           <h1 className="font-display text-2xl font-bold mt-1">Pick a name</h1>
         </div>
