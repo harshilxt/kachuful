@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { DashboardScreen } from "./screens/DashboardScreen";
 import { KachufulHomeScreen } from "./games/kachuful/screens/KachufulHomeScreen";
 import { BlackjackHomeScreen } from "./games/blackjack/screens/BlackjackHomeScreen";
+import { UnoHomeScreen } from "./games/uno/screens/UnoHomeScreen";
 import { GameScreen } from "./games/kachuful/screens/SpGameScreen";
 import { GameOverScreen } from "./games/kachuful/screens/SpGameOverScreen";
 import { MpHubScreen } from "./screens/multiplayer/MpHubScreen";
@@ -31,6 +32,7 @@ export default function App() {
       <Route path="/" element={<DashboardScreen />} />
       <Route path="/game/kachuful" element={<KachufulHomeScreen />} />
       <Route path="/game/blackjack" element={<BlackjackHomeScreen />} />
+      <Route path="/game/uno" element={<UnoHomeScreen />} />
       <Route path="/play" element={<GameScreen />} />
       <Route path="/play/over" element={<GameOverScreen />} />
       <Route path="/online" element={<MpHubScreen />} />

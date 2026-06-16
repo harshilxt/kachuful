@@ -23,7 +23,11 @@ interface MpStore {
   clearError: () => void;
 
   ensureConnected: () => AppSocket;
-  createRoom: (name: string, gameType?: GameType) => Promise<string>;
+  createRoom: (
+    name: string,
+    gameType?: GameType,
+    opts?: { bots?: number; autostart?: boolean }
+  ) => Promise<string>;
   joinRoom: (code: string, name: string) => Promise<string>;
   leaveRoom: () => void;
   kickPlayer: (playerId: string) => void;
@@ -83,11 +87,11 @@ export const useMpStore = create<MpStore>((set, get) => ({
     return s;
   },
 
-  createRoom: async (name, gameType = "kachuful") => {
+  createRoom: async (name, gameType = "kachuful", opts) => {
     const sock = get().ensureConnected();
     set({ pending: true, errorMessage: null, name: name.slice(0, 18) });
     return new Promise<string>((resolve, reject) => {
-      sock.emit("room:create", { name, gameType }, (resp) => {
+      sock.emit("room:create", { name, gameType, ...opts }, (resp) => {
         set({ pending: false });
         if (!resp.ok) {
           set({ errorMessage: resp.error || "Failed to create room" });

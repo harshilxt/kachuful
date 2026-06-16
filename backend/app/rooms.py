@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Literal, Optional, Set, Tuple
 from .games.kachuful import DEFAULT_SETTINGS as KACHUFUL_DEFAULTS
 from .games.kachuful.types import GameSettings, GameState, Player
 from .games.blackjack import DEFAULT_SETTINGS as BLACKJACK_DEFAULTS
+from .games.uno import DEFAULT_SETTINGS as UNO_DEFAULTS
 
 
 # Visible to clients
@@ -29,13 +30,19 @@ MIN_PLAYERS = 2
 GAME_LIMITS: Dict[str, Dict[str, int]] = {
     "kachuful": {"min": 2, "max": 26},
     "blackjack": {"min": 1, "max": 7},
+    "uno": {"min": 2, "max": 10},
 }
 
 
 def _default_settings_for(game_type: str):
     if game_type == "blackjack":
         return BLACKJACK_DEFAULTS.model_copy()
+    if game_type == "uno":
+        return UNO_DEFAULTS.model_copy()
     return KACHUFUL_DEFAULTS.model_copy()
+
+
+BOT_NAMES = ["Riya", "Sam", "Neo", "Mia", "Kai", "Zoe", "Leo", "Ava", "Dev"]
 
 
 def _generate_code() -> str:
@@ -159,6 +166,42 @@ class RoomRegistry:
         room.players[player_id] = player
         self._rooms[code] = room
         return room, player
+
+    def add_bots(self, room: ServerRoom, count: int) -> None:
+        """Add AI players to a room (for Play-vs-AI). Bots have no socket;
+        they're driven entirely by the server's bot loop."""
+        used = {p.name.lower() for p in room.players.values()}
+        added = 0
+        for nm in BOT_NAMES:
+            if added >= count:
+                break
+            if len(room.players) >= room.max_players:
+                break
+            if nm.lower() in used:
+                continue
+            used.add(nm.lower())
+            seat = len(room.players)
+            pid = _new_player_id()
+            room.players[pid] = RoomPlayerInternal(
+                id=pid,
+                name=nm,
+                avatar=AVATARS[seat % len(AVATARS)],
+                ready=True,        # bots are always ready
+                connected=False,   # no socket → skipped by per-player broadcast
+                is_host=False,
+                seat=seat,
+                is_ai=True,
+                socket_id=f"bot_{pid}",
+            )
+            added += 1
+
+    def connected_humans(self, room: ServerRoom) -> int:
+        return sum(
+            1 for p in room.players.values() if p.connected and not p.is_ai
+        )
+
+    def destroy(self, code: str) -> None:
+        self._rooms.pop(code, None)
 
     def join_room(
         self, code: str, name: str, socket_id: str

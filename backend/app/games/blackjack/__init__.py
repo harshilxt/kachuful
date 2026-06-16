@@ -86,6 +86,18 @@ class Engine:
         return state.phase == "game_over"
 
     @staticmethod
+    def turn_token(state: BjGameState) -> tuple:
+        """Stable token for the current waiting point (used by the timer
+        + watchdog to detect a stuck turn)."""
+        return (
+            state.round,
+            state.phase,
+            _current_expected_player_id(state),
+            state.activePlayerIndex,
+            state.activeHandIndex,
+        )
+
+    @staticmethod
     def auto_default_action(
         state: BjGameState, player_id: str
     ) -> Optional[dict]:

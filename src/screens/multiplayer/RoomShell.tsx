@@ -5,6 +5,7 @@ import { MpLobbyScreen } from "./MpLobbyScreen";
 import { MpGameScreen } from "../../games/kachuful/screens/MpGameScreen";
 import { MpGameOverScreen } from "../../games/kachuful/screens/MpGameOverScreen";
 import { MpBlackjackScreen } from "../../games/blackjack/screens/MpBlackjackScreen";
+import { MpUnoScreen } from "../../games/uno/screens/MpUnoScreen";
 
 export function RoomShell() {
   const { code } = useParams<{ code: string }>();
@@ -25,6 +26,14 @@ export function RoomShell() {
   if (room.gameType === "blackjack") {
     if (room.phase === "playing" || room.phase === "finished") {
       return <MpBlackjackScreen />;
+    }
+    return <MpLobbyScreen />;
+  }
+
+  // UNO: the table handles playing + round_over + game_over itself.
+  if (room.gameType === "uno") {
+    if (room.phase === "playing" || room.phase === "finished") {
+      return <MpUnoScreen />;
     }
     return <MpLobbyScreen />;
   }

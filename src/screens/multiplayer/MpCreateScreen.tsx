@@ -10,7 +10,12 @@ export function MpCreateScreen() {
   const navigate = useNavigate();
   const [localName, setLocalName] = useState(name || "");
 
-  const gameLabel = pendingGameType === "blackjack" ? "Blackjack" : "Kachu Ful";
+  const gameLabel =
+    pendingGameType === "blackjack"
+      ? "Blackjack"
+      : pendingGameType === "uno"
+      ? "UNO"
+      : "Kachu Ful";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

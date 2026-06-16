@@ -30,6 +30,8 @@ from .games.kachuful.types import Card, GameSettings
 from .games.kachuful import Engine as KachufulEngine
 from .games.blackjack import Engine as BlackjackEngine
 from .games.blackjack.types import BjPlayer
+from .games.uno import Engine as UnoEngine
+from .games.uno.types import UnoPlayer
 from .rooms import MIN_PLAYERS, RoomRegistry, ServerRoom
 
 
@@ -38,11 +40,21 @@ from .rooms import MIN_PLAYERS, RoomRegistry, ServerRoom
 ENGINES = {
     "kachuful": KachufulEngine,
     "blackjack": BlackjackEngine,
+    "uno": UnoEngine,
 }
+
+# Games driven by the generic realtime loop (auto_advance + bot loop + timer
+# + watchdog). Kachu Ful keeps its own dedicated orchestration.
+REALTIME_GAMES = {"blackjack", "uno"}
 
 
 def engine_for(room: ServerRoom):
     return ENGINES.get(room.game_type, KachufulEngine)
+
+
+def engine_for_code(code: str):
+    room = registry.get_room(code)
+    return engine_for(room) if room else KachufulEngine
 
 
 PORT = int(os.environ.get("PORT", "3001"))
@@ -113,10 +125,18 @@ async def broadcast_room(room: ServerRoom) -> None:
 async def broadcast_game(room: ServerRoom) -> None:
     if room.game_state is None:
         return
-    # Engine.public_view strips hidden info (e.g. the blackjack dealer hole
-    # card). For Kachu Ful it's an identity dump — behaviorally unchanged.
-    view = engine_for(room).public_view(room.game_state)
-    await sio.emit("game:state", view, room=f"room:{room.code}")
+    eng = engine_for(room)
+    # Games with hidden per-player info (UNO hands) get a tailored payload
+    # per socket. Others broadcast one shared public_view to the whole room.
+    if getattr(eng, "PER_PLAYER_VIEW", False):
+        for p in room.players.values():
+            if not p.connected:
+                continue
+            view = eng.private_view(room.game_state, p.id)
+            await sio.emit("game:state", view, to=p.socket_id)
+    else:
+        view = eng.public_view(room.game_state)
+        await sio.emit("game:state", view, room=f"room:{room.code}")
 
 
 def _clear_turn_timer(code: str) -> None:
@@ -307,7 +327,7 @@ def _start_watchdog(room: ServerRoom) -> None:
     if existing is not None and not existing.done():
         return
     loop_fn = (
-        _bj_watchdog_loop if room.game_type == "blackjack" else _watchdog_loop
+        _bj_watchdog_loop if room.game_type in REALTIME_GAMES else _watchdog_loop
     )
     room_watchdogs[room.code] = asyncio.create_task(loop_fn(room.code))
 
@@ -466,24 +486,45 @@ async def _bj_start_game(room: ServerRoom) -> None:
     await bj_drive(room)
 
 
+async def _uno_start_game(room: ServerRoom) -> None:
+    if len(room.players) < room.min_players:
+        return
+    players = [
+        UnoPlayer(
+            id=p.id, name=p.name, isBot=p.is_ai, avatar=p.avatar, seat=p.seat
+        )
+        for p in room.players.values()
+    ]
+    state = UnoEngine.create_initial_state(players, room.settings)
+    state.hostId = room.host_id
+    room.game_state = state
+    room.phase = "playing"
+    log(f"[uno:{room.code}] STARTED — {len(players)} players")
+    _start_watchdog(room)
+    await broadcast_room(room)
+    await broadcast_game(room)
+    await bj_drive(room)
+
+
 async def bj_drive(room: ServerRoom) -> None:
-    """Self-driving Blackjack loop: runs automatic phases (deal, dealer,
-    settle) with pacing delays, plays for bots/AI seats, and stops to wait
-    when a connected human must act."""
+    """Generic realtime game loop (Blackjack + UNO): runs automatic phases
+    with pacing delays, plays for bots/AI seats, and stops to wait when a
+    connected human must act."""
     existing = bj_loops.get(room.code)
     if existing is not None and not existing.done():
         return
 
     async def loop() -> None:
+        eng = engine_for(room)
         try:
-            while room.game_state is not None and room.game_type == "blackjack":
-                # 1. Automatic engine transitions.
-                adv = BlackjackEngine.auto_advance(room.game_state)
+            while room.game_state is not None and room.game_type in REALTIME_GAMES:
+                # 1. Automatic engine transitions (dealer draws, settle, …).
+                adv = eng.auto_advance(room.game_state)
                 if adv is not None:
                     new_state, delay_ms = adv
                     room.game_state = new_state
                     await broadcast_game(room)
-                    if BlackjackEngine.is_terminal(new_state):
+                    if eng.is_terminal(new_state):
                         room.phase = "finished"
                         _stop_watchdog(room.code)
                         await broadcast_room(room)
@@ -491,10 +532,8 @@ async def bj_drive(room: ServerRoom) -> None:
                     await asyncio.sleep(delay_ms / 1000)
                     continue
 
-                # 2. Waiting on a player (betting / player_turns).
-                expected = BlackjackEngine.current_expected_player(
-                    room.game_state
-                )
+                # 2. Waiting on a player.
+                expected = eng.current_expected_player(room.game_state)
                 if expected is None:
                     # round_over (host advances) or game_over.
                     return
@@ -502,20 +541,15 @@ async def bj_drive(room: ServerRoom) -> None:
                 if player is None:
                     return
                 if (not player.connected) or player.is_ai:
-                    action = BlackjackEngine.bot_action(
-                        room.game_state, expected
-                    )
+                    action = eng.bot_action(room.game_state, expected)
                     if action is None:
                         return
                     await asyncio.sleep(0.8)
                     if room.game_state is None:
                         return
-                    if (
-                        BlackjackEngine.current_expected_player(room.game_state)
-                        != expected
-                    ):
+                    if eng.current_expected_player(room.game_state) != expected:
                         continue
-                    room.game_state = BlackjackEngine.apply_action(
+                    room.game_state = eng.apply_action(
                         room.game_state, expected, action
                     )
                     await broadcast_game(room)
@@ -525,7 +559,7 @@ async def bj_drive(room: ServerRoom) -> None:
                 _bj_schedule_timer(room)
                 return
         except Exception as e:  # pragma: no cover
-            log(f"[bj:{room.code}] LOOP CRASHED: {e!r}")
+            log(f"[rt:{room.code}] LOOP CRASHED: {e!r}")
             import traceback
 
             traceback.print_exc()
@@ -535,14 +569,8 @@ async def bj_drive(room: ServerRoom) -> None:
     bj_loops[room.code] = asyncio.create_task(loop())
 
 
-def _bj_turn_snapshot(state) -> tuple:
-    return (
-        state.round,
-        state.phase,
-        BlackjackEngine.current_expected_player(state),
-        state.activePlayerIndex,
-        state.activeHandIndex,
-    )
+def _rt_turn_snapshot(room: ServerRoom, state) -> tuple:
+    return engine_for(room).turn_token(state)
 
 
 def _bj_schedule_timer(room: ServerRoom) -> None:
@@ -550,13 +578,14 @@ def _bj_schedule_timer(room: ServerRoom) -> None:
     state = room.game_state
     if state is None:
         return
-    expected = BlackjackEngine.current_expected_player(state)
+    eng = engine_for(room)
+    expected = eng.current_expected_player(state)
     if expected is None:
         return
     player = room.players.get(expected)
     if player is None or player.is_ai:
         return
-    snap = _bj_turn_snapshot(state)
+    snap = eng.turn_token(state)
     code = room.code
 
     def on_timeout() -> None:
@@ -571,13 +600,14 @@ async def _bj_handle_timeout(code: str, snap: tuple, expected: str) -> None:
     r = registry.get_room(code)
     if r is None or r.game_state is None:
         return
-    if _bj_turn_snapshot(r.game_state) != snap:
+    eng = engine_for(r)
+    if eng.turn_token(r.game_state) != snap:
         return
-    action = BlackjackEngine.auto_default_action(r.game_state, expected)
+    action = eng.auto_default_action(r.game_state, expected)
     if action is None:
         return
-    log(f"[bj:{code}] timeout auto-action {action.get('type')} for {expected}")
-    r.game_state = BlackjackEngine.apply_action(r.game_state, expected, action)
+    log(f"[rt:{code}] timeout auto-action {action.get('type')} for {expected}")
+    r.game_state = eng.apply_action(r.game_state, expected, action)
     await broadcast_game(r)
     await bj_drive(r)
 
@@ -585,22 +615,23 @@ async def _bj_handle_timeout(code: str, snap: tuple, expected: str) -> None:
 async def _bj_watchdog_loop(code: str) -> None:
     """Safety net mirroring the Kachu Ful watchdog: if a human's turn is
     stuck past BJ_WATCHDOG_STUCK_SEC, force the default action."""
-    log(f"[bj-watchdog:{code}] starting")
+    log(f"[rt-watchdog:{code}] starting")
     last_key = None
     started = asyncio.get_running_loop().time()
     try:
         while True:
             await asyncio.sleep(BJ_WATCHDOG_TICK_SEC)
             r = registry.get_room(code)
-            if r is None or r.game_type != "blackjack":
+            if r is None or r.game_type not in REALTIME_GAMES:
                 return
+            eng = engine_for(r)
             state = r.game_state
             if state is None:
                 last_key = None
                 continue
-            if state.phase == "game_over":
+            if eng.is_terminal(state):
                 return
-            expected = BlackjackEngine.current_expected_player(state)
+            expected = eng.current_expected_player(state)
             if expected is None:
                 last_key = None
                 continue
@@ -608,7 +639,7 @@ async def _bj_watchdog_loop(code: str) -> None:
             if player is None or player.is_ai:
                 last_key = None
                 continue
-            key = _bj_turn_snapshot(state)
+            key = eng.turn_token(state)
             now = asyncio.get_running_loop().time()
             if key != last_key:
                 last_key = key
@@ -616,27 +647,25 @@ async def _bj_watchdog_loop(code: str) -> None:
                 continue
             if now - started < BJ_WATCHDOG_STUCK_SEC:
                 continue
-            log(f"[bj-watchdog:{code}] STUCK {key} — forcing default")
-            action = BlackjackEngine.auto_default_action(state, expected)
+            log(f"[rt-watchdog:{code}] STUCK {key} — forcing default")
+            action = eng.auto_default_action(state, expected)
             if action is not None:
-                r.game_state = BlackjackEngine.apply_action(
-                    state, expected, action
-                )
+                r.game_state = eng.apply_action(state, expected, action)
                 _clear_turn_timer(code)
                 last_key = None
                 await broadcast_game(r)
                 await bj_drive(r)
     except asyncio.CancelledError:
-        log(f"[bj-watchdog:{code}] cancelled")
+        log(f"[rt-watchdog:{code}] cancelled")
         raise
     except Exception as e:  # pragma: no cover
-        log(f"[bj-watchdog:{code}] CRASHED: {e!r}")
+        log(f"[rt-watchdog:{code}] CRASHED: {e!r}")
 
 
 async def _drive_after_takeover(room: ServerRoom) -> None:
     """Dispatch the right game loop after a disconnect/kick changed who's
     in control."""
-    if room.game_type == "blackjack":
+    if room.game_type in REALTIME_GAMES:
         await bj_drive(room)
     else:
         await _after_state_change(room)
@@ -651,14 +680,30 @@ async def connect(sid: str, environ: Dict[str, Any]) -> None:
     pass
 
 
+async def _start_for(room: ServerRoom) -> None:
+    if room.game_type == "blackjack":
+        await _bj_start_game(room)
+    elif room.game_type == "uno":
+        await _uno_start_game(room)
+    else:
+        await _start_game(room)
+
+
 @sio.on("room:create")
 async def on_room_create(sid: str, data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     name = (data or {}).get("name") or "Player"
     game_type = (data or {}).get("gameType") or "kachuful"
+    bots = int((data or {}).get("bots") or 0)
+    autostart = bool((data or {}).get("autostart"))
     room, player = registry.create_room(name, sid, game_type)
     sid_session[sid] = {"room_code": room.code, "player_id": player.id}
     await sio.enter_room(sid, f"room:{room.code}")
+    if bots > 0:
+        registry.add_bots(room, min(bots, room.max_players - 1))
     await broadcast_room(room)
+    # Play-vs-AI: kick the game off immediately once bots fill the table.
+    if autostart and len(room.players) >= room.min_players:
+        await _start_for(room)
     return {
         "ok": True,
         "code": room.code,
@@ -710,6 +755,8 @@ async def on_room_leave(sid: str) -> None:
         await sio.emit("room:left", to=sid)
         await broadcast_room(room)
         await _drive_after_takeover(room)
+        if registry.connected_humans(room) == 0:
+            asyncio.create_task(_schedule_no_human_cleanup(room_code))
     else:
         after = registry.leave_room(room_code, player_id)
         await sio.leave_room(sid, f"room:{room_code}")
@@ -812,6 +859,8 @@ async def on_room_start(sid: str) -> None:
         return
     if room.game_type == "blackjack":
         await _bj_start_game(room)
+    elif room.game_type == "uno":
+        await _uno_start_game(room)
     else:
         await _start_game(room)
 
@@ -863,14 +912,15 @@ async def on_game_action(sid: str, data: Dict[str, Any]) -> None:
     room = registry.get_room(sess["room_code"])
     if room is None or room.game_state is None:
         return
-    if room.game_type != "blackjack":
+    if room.game_type not in REALTIME_GAMES:
         return
+    eng = engine_for(room)
     action = data or {}
-    expected = BlackjackEngine.current_expected_player(room.game_state)
+    expected = eng.current_expected_player(room.game_state)
     if expected != sess["player_id"]:
         return
     _clear_turn_timer(room.code)
-    room.game_state = BlackjackEngine.apply_action(
+    room.game_state = eng.apply_action(
         room.game_state, sess["player_id"], action
     )
     await broadcast_game(room)
@@ -888,10 +938,11 @@ async def on_game_next(sid: str) -> None:
     if room.host_id != sess["player_id"]:
         return
 
-    if room.game_type == "blackjack":
+    if room.game_type in REALTIME_GAMES:
         if room.game_state.phase != "round_over":
             return
-        room.game_state = BlackjackEngine.apply_action(
+        eng = engine_for(room)
+        room.game_state = eng.apply_action(
             room.game_state, sess["player_id"], {"type": "next_round"}
         )
         if room.game_state.phase == "game_over":
@@ -963,10 +1014,26 @@ async def disconnect(sid: str) -> None:
         registry.set_ai_controlled(room, player_id, True)
         await broadcast_room(room)
         await _drive_after_takeover(room)
+        if registry.connected_humans(room) == 0:
+            asyncio.create_task(_schedule_no_human_cleanup(room_code))
     else:
         # Lobby/finished: 30s grace then remove.
         await broadcast_room(room)
         await _schedule_lobby_eviction(room_code, player_id, sid)
+
+
+async def _schedule_no_human_cleanup(room_code: str) -> None:
+    """GC a room once no connected humans remain (e.g. a Play-vs-AI game the
+    only human abandoned). A reconnect within the grace window cancels it."""
+    await asyncio.sleep(60.0)
+    r = registry.get_room(room_code)
+    if r is None:
+        return
+    if registry.connected_humans(r) == 0:
+        _clear_turn_timer(room_code)
+        _stop_watchdog(room_code)
+        registry.destroy(room_code)
+        log(f"[gc:{room_code}] destroyed — no humans left")
 
 
 async def _schedule_lobby_eviction(

@@ -38,6 +38,17 @@ export const GAMES: GameInfo[] = [
     route: "/game/blackjack",
   },
   {
+    id: "uno",
+    name: "UNO",
+    tagline: "Match colour or number. Last card? Shout UNO!",
+    emoji: "🎴",
+    players: "2–10 players",
+    accent: "from-amber-600/40 to-ink-900/70",
+    ring: "group-hover:shadow-[0_0_0_2px_rgba(251,191,36,0.5),0_0_28px_rgba(251,191,36,0.35)]",
+    available: true,
+    route: "/game/uno",
+  },
+  {
     id: "teenpatti",
     name: "Teen Patti",
     tagline: "3-card Indian poker. Blind or seen.",

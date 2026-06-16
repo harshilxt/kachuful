@@ -1,7 +1,7 @@
 import type { GameState, GameSettings, Card } from "../games/kachuful/engine/types";
 import type { BjGameState } from "../games/blackjack/engine/types";
 
-export type GameType = "kachuful" | "blackjack";
+export type GameType = "kachuful" | "blackjack" | "uno";
 
 /** Either game's state — the active game is determined by RoomPublic.gameType. */
 export type AnyGameState = GameState | BjGameState;
@@ -45,7 +45,13 @@ export interface ServerToClientEvents {
 
 export interface ClientToServerEvents {
   "room:create": (
-    data: { name: string; gameType?: GameType; settings?: Partial<GameSettings> },
+    data: {
+      name: string;
+      gameType?: GameType;
+      settings?: Partial<GameSettings>;
+      bots?: number;
+      autostart?: boolean;
+    },
     ack: (response: {
       ok: boolean;
       code?: string;
