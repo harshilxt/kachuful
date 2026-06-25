@@ -5,6 +5,55 @@ import { useGameStore } from "../../../store/gameStore";
 import { useMpStore } from "../../../store/multiplayerStore";
 import { ArrowLeft, Bot, Info, Loader2, Sparkles, Users } from "lucide-react";
 import { cn } from "../../../lib/utils";
+import { Seo } from "../../../components/Seo";
+import { GameInfoContent, faqJsonLd } from "../../../components/GameInfoContent";
+import { SITE_URL } from "../../../lib/siteConfig";
+
+const INTRO = [
+  "UNO is the classic fast-paced card game loved around the world. Match the top card by colour, number or symbol, play action cards to trip up your opponents, and don't forget to shout “UNO!” when you're down to your last card.",
+  "On PlayGameHub you can play UNO online for free against smart AI bots or in real-time multiplayer rooms with 2–10 friends. No download or sign-up needed — just open your browser and start matching.",
+];
+
+const HOW_TO = [
+  "Each player starts with 7 cards. On your turn, play a card that matches the top of the pile by colour, number or symbol.",
+  "Can't play? Draw a card from the deck — play it if it fits, otherwise your turn passes.",
+  "Use action cards to your advantage: Skip, Reverse, Draw Two, Wild (choose the colour) and Wild Draw Four.",
+  "When you play your second-to-last card you must shout “UNO!” — tap the UNO button or draw a 2-card penalty.",
+  "Be the first to empty your hand to win the round. The winner scores points from everyone else's leftover cards; first to 500 wins.",
+];
+
+const FAQS = [
+  {
+    q: "Is UNO free to play online?",
+    a: "Yes. UNO on PlayGameHub is completely free, with no downloads, sign-ups or in-app purchases.",
+  },
+  {
+    q: "Can I play UNO with friends?",
+    a: "Yes. Create a private room, share the room code, and play UNO together in real time with up to 10 friends on any device.",
+  },
+  {
+    q: "How many players can play UNO?",
+    a: "UNO supports 2 to 10 players. Add AI bots to fill seats if you want to play solo or with a smaller group.",
+  },
+  {
+    q: "What happens if I forget to say UNO?",
+    a: "If you don't call UNO before playing your second-to-last card, you draw a 2-card penalty.",
+  },
+];
+
+const GAME_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": "VideoGame",
+  name: "UNO",
+  url: `${SITE_URL}/game/uno`,
+  description:
+    "Play UNO online free with friends or against AI. Match colour, number or symbol, use action cards and shout UNO! For 2–10 players.",
+  genre: ["Card game", "Family"],
+  playMode: ["SinglePlayer", "MultiPlayer"],
+  applicationCategory: "Game",
+  operatingSystem: "Web browser",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+};
 
 export function UnoHomeScreen() {
   const { playerName, setPlayerName } = useGameStore();
@@ -39,9 +88,15 @@ export function UnoHomeScreen() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-8 relative overflow-hidden">
-      <div className="absolute inset-0 table-felt" />
-      <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(circle_at_18%_22%,rgba(214,58,50,.4),transparent_38%),radial-gradient(circle_at_82%_28%,rgba(43,111,214,.4),transparent_40%),radial-gradient(circle_at_50%_92%,rgba(232,162,0,.4),transparent_42%)]" />
+    <div className="min-h-screen relative">
+      <Seo
+        title="Play UNO Online Free – With Friends or AI | PlayGameHub"
+        description="Play UNO online for free with friends or against AI bots. Match colour, number or symbol, use Skips, Reverses and Wilds — shout UNO! For 2–10 players, no download."
+        path="/game/uno"
+        jsonLd={[GAME_JSONLD, faqJsonLd(FAQS)]}
+      />
+      <div className="fixed inset-0 -z-10 table-felt" />
+      <div className="fixed inset-0 -z-10 opacity-25 [background-image:radial-gradient(circle_at_18%_22%,rgba(214,58,50,.4),transparent_38%),radial-gradient(circle_at_82%_28%,rgba(43,111,214,.4),transparent_40%),radial-gradient(circle_at_50%_92%,rgba(232,162,0,.4),transparent_42%)]" />
 
       <button
         onClick={() => navigate("/")}
@@ -50,6 +105,7 @@ export function UnoHomeScreen() {
         <ArrowLeft className="w-4 h-4" /> Games
       </button>
 
+      <div className="min-h-screen flex items-center justify-center px-4 py-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -155,6 +211,9 @@ export function UnoHomeScreen() {
           <Info className="w-3 h-3 inline mr-1" /> How to play
         </button>
       </motion.div>
+      </div>
+
+      <GameInfoContent name="UNO" intro={INTRO} howTo={HOW_TO} faqs={FAQS} />
 
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
     </div>

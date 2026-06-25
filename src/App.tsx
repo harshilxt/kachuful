@@ -10,6 +10,10 @@ import { MpHubScreen } from "./screens/multiplayer/MpHubScreen";
 import { MpCreateScreen } from "./screens/multiplayer/MpCreateScreen";
 import { MpJoinScreen } from "./screens/multiplayer/MpJoinScreen";
 import { RoomShell } from "./screens/multiplayer/RoomShell";
+import { AboutPage } from "./screens/pages/AboutPage";
+import { PrivacyPage } from "./screens/pages/PrivacyPage";
+import { TermsPage } from "./screens/pages/TermsPage";
+import { ContactPage } from "./screens/pages/ContactPage";
 import { useGameStore } from "./store/gameStore";
 import { useMpStore } from "./store/multiplayerStore";
 import { setMpNavigator } from "./lib/mpNavigator";
@@ -40,6 +44,10 @@ export default function App() {
       <Route path="/online/join" element={<MpJoinScreen />} />
       <Route path="/online/join/:code" element={<MpJoinScreen />} />
       <Route path="/room/:code" element={<RoomShell />} />
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/contact" element={<ContactPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

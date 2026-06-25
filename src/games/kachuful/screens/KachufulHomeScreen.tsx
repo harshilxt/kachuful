@@ -6,6 +6,55 @@ import { useMpStore } from "../../../store/multiplayerStore";
 import { DEFAULT_SETTINGS } from "../engine/engine";
 import { ArrowLeft, Bot, Crown, Info, Sparkles, Users } from "lucide-react";
 import { cn } from "../../../lib/utils";
+import { Seo } from "../../../components/Seo";
+import { GameInfoContent, faqJsonLd } from "../../../components/GameInfoContent";
+import { SITE_URL } from "../../../lib/siteConfig";
+
+const INTRO = [
+  "Kachuful — also known as Judgement, Kachufool or Oh Hell — is a classic trick-taking card game where the goal isn't to win the most tricks, but to win exactly the number you predict. It's a beloved card game that rewards sharp judgement over luck.",
+  "On PlayGameHub you can play Kachuful online for free, against smart AI opponents or in real-time multiplayer rooms with 2–7 friends. No download or sign-up needed — just open your browser and deal.",
+];
+
+const HOW_TO = [
+  "Each round every player is dealt the same number of cards. The deal grows from 1 card up to a chosen peak and back down again.",
+  "Look at your hand and bid the exact number of tricks you think you'll win. The dealer bids last and can't make the total bids equal the number of tricks.",
+  "Play clockwise — follow the led suit if you can. The highest trump, or the highest card of the led suit, wins the trick.",
+  "Win exactly your bid to score 10 + your bid. Miss it (over or under) and you score zero that round.",
+  "After all rounds are played, the highest total score wins the game.",
+];
+
+const FAQS = [
+  {
+    q: "Is Kachuful free to play?",
+    a: "Yes. Kachuful is completely free to play on PlayGameHub, with no downloads, sign-ups or in-app purchases.",
+  },
+  {
+    q: "Can I play Kachuful with friends online?",
+    a: "Absolutely. Create a private room, share the room code with up to 7 friends, and play together in real time from any device.",
+  },
+  {
+    q: "How many players can play Kachuful?",
+    a: "Kachuful supports 2 to 7 players. You can fill empty seats with AI opponents to play solo or with a smaller group.",
+  },
+  {
+    q: "What is another name for Kachuful?",
+    a: "Kachuful is also known as Judgement, Kachufool, Oh Hell or Oh Pshaw — they're the same trick-prediction card game.",
+  },
+];
+
+const GAME_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": "VideoGame",
+  name: "Kachuful (Judgement)",
+  url: `${SITE_URL}/game/kachuful`,
+  description:
+    "Play Kachuful (Judgement) online free — a classic trick-taking card game for 2–7 players. Bid the exact tricks you'll win.",
+  genre: ["Card game", "Trick-taking"],
+  playMode: ["SinglePlayer", "MultiPlayer"],
+  applicationCategory: "Game",
+  operatingSystem: "Web browser",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+};
 
 export function KachufulHomeScreen() {
   const { playerName, setPlayerName, numBots, setNumBots, newGame } =
@@ -28,9 +77,15 @@ export function KachufulHomeScreen() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-8 relative overflow-hidden">
-      <div className="absolute inset-0 table-felt" />
-      <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_20%_30%,rgba(230,193,119,.4),transparent_40%),radial-gradient(circle_at_80%_70%,rgba(91,156,125,.5),transparent_40%)]" />
+    <div className="min-h-screen relative">
+      <Seo
+        title="Play Kachuful Online Free – Judgement Card Game | PlayGameHub"
+        description="Play Kachuful (Judgement) online for free with friends or against AI. The classic trick-taking card game for 2–7 players — no download, instant play in your browser."
+        path="/game/kachuful"
+        jsonLd={[GAME_JSONLD, faqJsonLd(FAQS)]}
+      />
+      <div className="fixed inset-0 -z-10 table-felt" />
+      <div className="fixed inset-0 -z-10 opacity-20 [background-image:radial-gradient(circle_at_20%_30%,rgba(230,193,119,.4),transparent_40%),radial-gradient(circle_at_80%_70%,rgba(91,156,125,.5),transparent_40%)]" />
 
       <button
         onClick={() => navigate("/")}
@@ -39,6 +94,7 @@ export function KachufulHomeScreen() {
         <ArrowLeft className="w-4 h-4" /> Games
       </button>
 
+      <div className="min-h-screen flex items-center justify-center px-4 py-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -147,6 +203,14 @@ export function KachufulHomeScreen() {
           <Info className="w-3 h-3 inline mr-1" /> How to play
         </button>
       </motion.div>
+      </div>
+
+      <GameInfoContent
+        name="Kachuful"
+        intro={INTRO}
+        howTo={HOW_TO}
+        faqs={FAQS}
+      />
 
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
     </div>

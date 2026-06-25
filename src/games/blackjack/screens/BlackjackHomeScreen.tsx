@@ -4,6 +4,55 @@ import { useNavigate } from "react-router-dom";
 import { useGameStore } from "../../../store/gameStore";
 import { useMpStore } from "../../../store/multiplayerStore";
 import { ArrowLeft, Info, Spade, Users } from "lucide-react";
+import { Seo } from "../../../components/Seo";
+import { GameInfoContent, faqJsonLd } from "../../../components/GameInfoContent";
+import { SITE_URL } from "../../../lib/siteConfig";
+
+const INTRO = [
+  "Blackjack — also called 21 — is the world's most popular casino card game. The aim is simple: build a hand worth more than the dealer's without going over 21. It's quick to learn, fast to play and endlessly replayable.",
+  "On PlayGameHub you can play Blackjack online for free with virtual chips — no real money and no download. Play solo against the dealer or create a room and invite up to 7 friends to the table.",
+];
+
+const HOW_TO = [
+  "Place a chip bet to start the round. You and the dealer each receive two cards; one of the dealer's cards stays face-down.",
+  "Card values: number cards are face value, J/Q/K are worth 10, and an Ace counts as 1 or 11.",
+  "On your turn choose Hit (take a card), Stand (stop), Double (double your bet for one more card) or Split (two same-rank cards into two hands). Go over 21 and you bust.",
+  "The dealer then reveals the hole card and must keep drawing until reaching 17 or more.",
+  "Win 1:1, or a natural Blackjack pays 3:2. A tie is a push and your bet is returned.",
+];
+
+const FAQS = [
+  {
+    q: "Is this Blackjack game free?",
+    a: "Yes. Blackjack on PlayGameHub is free to play with virtual chips. There is no real-money gambling and nothing to download.",
+  },
+  {
+    q: "Can I play Blackjack against friends?",
+    a: "Yes. Create a private room and share the code so up to 7 friends can join the same table, or play solo against the dealer.",
+  },
+  {
+    q: "What does Blackjack pay?",
+    a: "A standard win pays 1:1. A natural Blackjack (an Ace plus a 10-value card) pays 3:2. Ties are a push and your bet is returned.",
+  },
+  {
+    q: "Does the dealer hit on 17?",
+    a: "The dealer draws cards until reaching a total of 17 or more, then stands.",
+  },
+];
+
+const GAME_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": "VideoGame",
+  name: "Blackjack (21)",
+  url: `${SITE_URL}/game/blackjack`,
+  description:
+    "Play Blackjack (21) online free with virtual chips. Beat the dealer without going over 21 — solo or multiplayer for 1–7 players.",
+  genre: ["Card game", "Casino"],
+  playMode: ["SinglePlayer", "MultiPlayer"],
+  applicationCategory: "Game",
+  operatingSystem: "Web browser",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+};
 
 export function BlackjackHomeScreen() {
   const { playerName, setPlayerName } = useGameStore();
@@ -19,9 +68,15 @@ export function BlackjackHomeScreen() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-8 relative overflow-hidden">
-      <div className="absolute inset-0 table-felt" />
-      <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_20%_25%,rgba(244,114,182,.35),transparent_40%),radial-gradient(circle_at_80%_75%,rgba(230,193,119,.35),transparent_42%)]" />
+    <div className="min-h-screen relative">
+      <Seo
+        title="Play Blackjack Online Free – 21 Card Game | PlayGameHub"
+        description="Play Blackjack (21) online for free with virtual chips. Beat the dealer solo or with friends — hit, stand, double and split. No download, instant play in your browser."
+        path="/game/blackjack"
+        jsonLd={[GAME_JSONLD, faqJsonLd(FAQS)]}
+      />
+      <div className="fixed inset-0 -z-10 table-felt" />
+      <div className="fixed inset-0 -z-10 opacity-20 [background-image:radial-gradient(circle_at_20%_25%,rgba(244,114,182,.35),transparent_40%),radial-gradient(circle_at_80%_75%,rgba(230,193,119,.35),transparent_42%)]" />
 
       <button
         onClick={() => navigate("/")}
@@ -30,6 +85,7 @@ export function BlackjackHomeScreen() {
         <ArrowLeft className="w-4 h-4" /> Games
       </button>
 
+      <div className="min-h-screen flex items-center justify-center px-4 py-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -96,6 +152,14 @@ export function BlackjackHomeScreen() {
           <Info className="w-3 h-3 inline mr-1" /> How to play
         </button>
       </motion.div>
+      </div>
+
+      <GameInfoContent
+        name="Blackjack"
+        intro={INTRO}
+        howTo={HOW_TO}
+        faqs={FAQS}
+      />
 
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
     </div>

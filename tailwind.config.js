@@ -17,6 +17,9 @@ export default {
           900: "#08251a",
         },
         gold: {
+          100: "#f9efd6",
+          200: "#f2ddae",
+          300: "#eccf8d",
           400: "#e6c177",
           500: "#d4a574",
           600: "#b88652",
@@ -34,7 +37,7 @@ export default {
         "glow-soft": "0 0 0 2px rgba(230,193,119,0.35), 0 0 14px rgba(230,193,119,0.35)",
       },
       fontFamily: {
-        display: ['"Cinzel"', "serif"],
+        display: ['"Sora"', "system-ui", "sans-serif"],
         sans: ['"Inter"', "system-ui", "sans-serif"],
       },
       keyframes: {

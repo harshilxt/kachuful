@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Keep transient game/room URLs out of the index
+Disallow: /play
+Disallow: /online
+Disallow: /room/
+
+Sitemap: https://playgamehub.online/sitemap.xml

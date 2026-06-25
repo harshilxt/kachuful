@@ -5,7 +5,32 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <meta name="theme-color" content="#08251a" />
-    <title>Kachu Ful · The Judgement Card Game</title>
+    <!--
+      Per-page <title>, description, canonical and Open Graph tags are managed
+      by the <Seo> React component (src/components/Seo.tsx) so each route gets
+      unique values without duplicating tags here.
+    -->
+
+    <!-- Global structured data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "PlayGameHub",
+        "url": "https://playgamehub.online/"
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "PlayGameHub",
+        "url": "https://playgamehub.online/",
+        "logo": "https://playgamehub.online/favicon.svg"
+      }
+    </script>
+
+    <title>PlayGameHub · Free Online Multiplayer Card Games</title>
   </head>
   <body>
     <div id="root"></div>
