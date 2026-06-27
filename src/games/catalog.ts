@@ -49,6 +49,17 @@ export const GAMES: GameInfo[] = [
     route: "/game/uno",
   },
   {
+    id: "solitaire",
+    name: "Solitaire",
+    tagline: "Klondike patience. Sort all cards Ace to King.",
+    emoji: "🂡",
+    players: "1 player",
+    accent: "from-sky-700/40 to-felt-800/70",
+    ring: "group-hover:shadow-[0_0_0_2px_rgba(125,211,252,0.5),0_0_28px_rgba(125,211,252,0.3)]",
+    available: true,
+    route: "/game/solitaire",
+  },
+  {
     id: "teenpatti",
     name: "Teen Patti",
     tagline: "3-card Indian poker. Blind or seen.",

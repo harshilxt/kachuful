@@ -15,6 +15,7 @@ const GAME_LINKS = [
   { to: "/game/kachuful", label: "Kachuful" },
   { to: "/game/blackjack", label: "Blackjack" },
   { to: "/game/uno", label: "UNO" },
+  { to: "/game/solitaire", label: "Solitaire" },
 ];
 
 /**
