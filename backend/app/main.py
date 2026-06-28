@@ -32,6 +32,8 @@ from .games.blackjack import Engine as BlackjackEngine
 from .games.blackjack.types import BjPlayer
 from .games.uno import Engine as UnoEngine
 from .games.uno.types import UnoPlayer
+from .games.mendikot import Engine as MendikotEngine
+from .games.mendikot.types import MPlayer as MendikotPlayer
 from .rooms import MIN_PLAYERS, RoomRegistry, ServerRoom
 
 
@@ -41,11 +43,12 @@ ENGINES = {
     "kachuful": KachufulEngine,
     "blackjack": BlackjackEngine,
     "uno": UnoEngine,
+    "mendikot": MendikotEngine,
 }
 
 # Games driven by the generic realtime loop (auto_advance + bot loop + timer
 # + watchdog). Kachu Ful keeps its own dedicated orchestration.
-REALTIME_GAMES = {"blackjack", "uno"}
+REALTIME_GAMES = {"blackjack", "uno", "mendikot"}
 
 
 def engine_for(room: ServerRoom):
@@ -506,6 +509,32 @@ async def _uno_start_game(room: ServerRoom) -> None:
     await bj_drive(room)
 
 
+async def _mendikot_start_game(room: ServerRoom) -> None:
+    # Mendikot needs exactly 4 players — fill empty seats with bots.
+    if len(room.players) < 4:
+        registry.add_bots(room, 4 - len(room.players))
+    players = [
+        MendikotPlayer(
+            id=p.id,
+            name=p.name,
+            seat=p.seat,
+            team=p.seat % 2,
+            isBot=p.is_ai,
+            avatar=p.avatar,
+        )
+        for p in room.players.values()
+    ]
+    state = MendikotEngine.create_initial_state(players, room.settings)
+    state.hostId = room.host_id
+    room.game_state = state
+    room.phase = "playing"
+    log(f"[mendikot:{room.code}] STARTED — {len(players)} players")
+    _start_watchdog(room)
+    await broadcast_room(room)
+    await broadcast_game(room)
+    await bj_drive(room)
+
+
 async def bj_drive(room: ServerRoom) -> None:
     """Generic realtime game loop (Blackjack + UNO): runs automatic phases
     with pacing delays, plays for bots/AI seats, and stops to wait when a
@@ -685,6 +714,8 @@ async def _start_for(room: ServerRoom) -> None:
         await _bj_start_game(room)
     elif room.game_type == "uno":
         await _uno_start_game(room)
+    elif room.game_type == "mendikot":
+        await _mendikot_start_game(room)
     else:
         await _start_game(room)
 
@@ -861,6 +892,8 @@ async def on_room_start(sid: str) -> None:
         await _bj_start_game(room)
     elif room.game_type == "uno":
         await _uno_start_game(room)
+    elif room.game_type == "mendikot":
+        await _mendikot_start_game(room)
     else:
         await _start_game(room)
 

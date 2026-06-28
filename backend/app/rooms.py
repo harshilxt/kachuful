@@ -14,6 +14,7 @@ from .games.kachuful import DEFAULT_SETTINGS as KACHUFUL_DEFAULTS
 from .games.kachuful.types import GameSettings, GameState, Player
 from .games.blackjack import DEFAULT_SETTINGS as BLACKJACK_DEFAULTS
 from .games.uno import DEFAULT_SETTINGS as UNO_DEFAULTS
+from .games.mendikot import DEFAULT_SETTINGS as MENDIKOT_DEFAULTS
 
 
 # Visible to clients
@@ -31,6 +32,7 @@ GAME_LIMITS: Dict[str, Dict[str, int]] = {
     "kachuful": {"min": 2, "max": 26},
     "blackjack": {"min": 1, "max": 7},
     "uno": {"min": 2, "max": 10},
+    "mendikot": {"min": 1, "max": 4},
 }
 
 
@@ -39,6 +41,8 @@ def _default_settings_for(game_type: str):
         return BLACKJACK_DEFAULTS.model_copy()
     if game_type == "uno":
         return UNO_DEFAULTS.model_copy()
+    if game_type == "mendikot":
+        return MENDIKOT_DEFAULTS.model_copy()
     return KACHUFUL_DEFAULTS.model_copy()
 
 

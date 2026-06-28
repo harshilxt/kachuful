@@ -35,6 +35,8 @@ export function MpHubScreen() {
               ? "Blackjack"
               : pendingGameType === "uno"
               ? "UNO"
+              : pendingGameType === "mendikot"
+              ? "Mendikot"
               : "Kachu Ful"}{" "}
             · Online
           </div>

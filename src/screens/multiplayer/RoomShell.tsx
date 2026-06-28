@@ -6,6 +6,7 @@ import { MpGameScreen } from "../../games/kachuful/screens/MpGameScreen";
 import { MpGameOverScreen } from "../../games/kachuful/screens/MpGameOverScreen";
 import { MpBlackjackScreen } from "../../games/blackjack/screens/MpBlackjackScreen";
 import { MpUnoScreen } from "../../games/uno/screens/MpUnoScreen";
+import { MpMendikotScreen } from "../../games/mendikot/screens/MpMendikotScreen";
 
 export function RoomShell() {
   const { code } = useParams<{ code: string }>();
@@ -34,6 +35,14 @@ export function RoomShell() {
   if (room.gameType === "uno") {
     if (room.phase === "playing" || room.phase === "finished") {
       return <MpUnoScreen />;
+    }
+    return <MpLobbyScreen />;
+  }
+
+  // Mendikot: server-driven table handles playing + hand_over.
+  if (room.gameType === "mendikot") {
+    if (room.phase === "playing" || room.phase === "finished") {
+      return <MpMendikotScreen />;
     }
     return <MpLobbyScreen />;
   }

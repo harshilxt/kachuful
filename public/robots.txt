@@ -6,5 +6,6 @@ Disallow: /play
 Disallow: /online
 Disallow: /room/
 Disallow: /game/solitaire/play
+Disallow: /game/mendikot/play
 
 Sitemap: https://playgamehub.online/sitemap.xml

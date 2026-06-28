@@ -6,6 +6,8 @@ import { BlackjackHomeScreen } from "./games/blackjack/screens/BlackjackHomeScre
 import { UnoHomeScreen } from "./games/uno/screens/UnoHomeScreen";
 import { SolitaireHomeScreen } from "./games/solitaire/screens/SolitaireHomeScreen";
 import { SolitaireGameScreen } from "./games/solitaire/screens/SolitaireGameScreen";
+import { MendikotHomeScreen } from "./games/mendikot/screens/MendikotHomeScreen";
+import { MendikotGameScreen } from "./games/mendikot/screens/MendikotGameScreen";
 import { GameScreen } from "./games/kachuful/screens/SpGameScreen";
 import { GameOverScreen } from "./games/kachuful/screens/SpGameOverScreen";
 import { MpHubScreen } from "./screens/multiplayer/MpHubScreen";
@@ -41,6 +43,8 @@ export default function App() {
       <Route path="/game/uno" element={<UnoHomeScreen />} />
       <Route path="/game/solitaire" element={<SolitaireHomeScreen />} />
       <Route path="/game/solitaire/play" element={<SolitaireGameScreen />} />
+      <Route path="/game/mendikot" element={<MendikotHomeScreen />} />
+      <Route path="/game/mendikot/play" element={<MendikotGameScreen />} />
       <Route path="/play" element={<GameScreen />} />
       <Route path="/play/over" element={<GameOverScreen />} />
       <Route path="/online" element={<MpHubScreen />} />

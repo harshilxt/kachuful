@@ -15,6 +15,8 @@ export function MpCreateScreen() {
       ? "Blackjack"
       : pendingGameType === "uno"
       ? "UNO"
+      : pendingGameType === "mendikot"
+      ? "Mendikot"
       : "Kachu Ful";
 
   const handleSubmit = async (e: React.FormEvent) => {

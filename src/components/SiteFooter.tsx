@@ -16,6 +16,7 @@ const GAME_LINKS = [
   { to: "/game/blackjack", label: "Blackjack" },
   { to: "/game/uno", label: "UNO" },
   { to: "/game/solitaire", label: "Solitaire" },
+  { to: "/game/mendikot", label: "Mendikot" },
 ];
 
 /**

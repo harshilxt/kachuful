@@ -304,7 +304,19 @@ export function MpLobbyScreen() {
                 </div>
               );
             })()
-          : (() => {
+          : room.gameType === "mendikot" ? (
+              <div className="mb-4 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm">
+                <div className="text-xs uppercase tracking-widest text-white/60 mb-1.5">
+                  Mendikot
+                </div>
+                <div className="text-white/70 text-[13px] leading-relaxed">
+                  4 players in 2 teams — partners sit opposite. Capture the four{" "}
+                  <b className="text-gold-300">10s</b> to win. Empty seats are
+                  filled with AI, so the game always starts with exactly 4
+                  players.
+                </div>
+              </div>
+            ) : (() => {
               const maxCards =
                 (room.settings as { maxCards?: number }).maxCards ?? 7;
               const playerCount = Math.max(1, room.players.length);
@@ -403,6 +415,8 @@ export function MpLobbyScreen() {
         <div className="text-[11px] text-white/40 text-center mt-4">
           {room.gameType === "blackjack"
             ? "Place a bet, then beat the dealer's hand without going over 21."
+            : room.gameType === "mendikot"
+            ? "Choose a secret trump, win tricks, and capture the four 10s with your partner."
             : "Trump rotates ♠ → ♦ → ♣ → ♥ each round. Make exactly your bid: score 10 + bid. Miss it: score 0."}
         </div>
       </motion.div>

@@ -29,6 +29,7 @@ const ROUTES = [
   "/game/uno",
   "/game/blackjack",
   "/game/solitaire",
+  "/game/mendikot",
 ];
 
 if (process.env.PRERENDER === "false") {

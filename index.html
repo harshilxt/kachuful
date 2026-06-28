@@ -6,6 +6,25 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <meta name="theme-color" content="#08251a" />
+
+    <!-- Google Analytics (GA4). Loads only on the live domain, so local dev
+         and the build-time prerender don't pollute your stats. -->
+    <script>
+      (function () {
+        var h = location.hostname;
+        if (h !== "playgamehub.online" && h !== "www.playgamehub.online") return;
+        var s = document.createElement("script");
+        s.async = true;
+        s.src = "https://www.googletagmanager.com/gtag/js?id=G-K8H5K38MJL";
+        document.head.appendChild(s);
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        window.gtag = gtag;
+        gtag("js", new Date());
+        gtag("config", "G-K8H5K38MJL");
+      })();
+    </script>
+
     <!--
       Per-page <title>, description, canonical and Open Graph tags are managed
       by the <Seo> React component (src/components/Seo.tsx) so each route gets

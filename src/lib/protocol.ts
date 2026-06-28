@@ -1,10 +1,11 @@
 import type { GameState, GameSettings, Card } from "../games/kachuful/engine/types";
 import type { BjGameState } from "../games/blackjack/engine/types";
+import type { MendikotView } from "../games/mendikot/engine/types";
 
-export type GameType = "kachuful" | "blackjack" | "uno";
+export type GameType = "kachuful" | "blackjack" | "uno" | "mendikot";
 
 /** Either game's state — the active game is determined by RoomPublic.gameType. */
-export type AnyGameState = GameState | BjGameState;
+export type AnyGameState = GameState | BjGameState | MendikotView;
 
 export interface RoomPlayer {
   id: string;

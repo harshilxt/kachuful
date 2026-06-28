@@ -49,6 +49,17 @@ export const GAMES: GameInfo[] = [
     route: "/game/uno",
   },
   {
+    id: "mendikot",
+    name: "Mendikot",
+    tagline: "Dehla Pakad · catch the four 10s with your partner.",
+    emoji: "🔟",
+    players: "4 players (you + 3 AI)",
+    accent: "from-emerald-700/40 to-ink-900/70",
+    ring: "group-hover:shadow-[0_0_0_2px_rgba(52,211,153,0.5),0_0_28px_rgba(52,211,153,0.32)]",
+    available: true,
+    route: "/game/mendikot",
+  },
+  {
     id: "solitaire",
     name: "Solitaire",
     tagline: "Klondike patience. Sort all cards Ace to King.",
