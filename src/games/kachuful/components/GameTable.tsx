@@ -9,7 +9,7 @@ import { RoundSummary } from "./RoundSummary";
 import { ScoreBoard } from "./ScoreBoard";
 import { currentExpectedPlayerId, getForbiddenDealerBid } from "../engine/engine";
 import { trickWinner } from "../engine/rules";
-import { ListOrdered, LogOut, Play, Timer } from "lucide-react";
+import { Eye, EyeOff, ListOrdered, LogOut, Play, Timer } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { computeSeatGeometry, layoutScale } from "../../../lib/seats";
@@ -44,6 +44,7 @@ export function GameTable({
   onKick,
 }: Props) {
   const [showScoreboard, setShowScoreboard] = useState(false);
+  const [handHidden, setHandHidden] = useState(false);
   const vp = useViewport();
   const isMobile = vp.isMobile;
 
@@ -259,7 +260,7 @@ export function GameTable({
               isHumanTurn && state.phase === "playing" && "z-20"
             )}
           >
-            <div className="flex justify-center">
+            <div className="flex justify-center items-center gap-2 sm:gap-3">
               <PlayerSeat
                 player={human}
                 cardCount={humanHand.length}
@@ -274,6 +275,28 @@ export function GameTable({
                 isLeading={!allTied && leader?.id === human.id}
                 compact={isMobile}
               />
+              {humanHand.length > 0 && (
+                <button
+                  onClick={() => setHandHidden((h) => !h)}
+                  className={cn(
+                    "chip border transition shrink-0",
+                    handHidden
+                      ? "bg-gold-500/20 text-gold-200 border-gold-400/40"
+                      : "bg-ink-900/70 text-white/80 border-white/15 hover:bg-ink-900/90 hover:text-white"
+                  )}
+                  title={handHidden ? "Show my cards" : "Hide my cards"}
+                  aria-pressed={handHidden}
+                >
+                  {handHidden ? (
+                    <Eye className="w-3.5 h-3.5" />
+                  ) : (
+                    <EyeOff className="w-3.5 h-3.5" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {handHidden ? "Show" : "Hide"}
+                  </span>
+                </button>
+              )}
             </div>
             <Hand
               cards={humanHand}
@@ -282,6 +305,7 @@ export function GameTable({
               canPlay={isHumanTurn && state.phase === "playing"}
               onPlay={(c) => onPlay(c.id)}
               compact={isMobile}
+              hidden={handHidden}
             />
             {isHumanTurn && state.phase === "playing" && (
               <motion.div

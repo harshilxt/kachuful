@@ -11,6 +11,9 @@ interface Props {
   canPlay: boolean;
   onPlay: (card: Card) => void;
   compact?: boolean;
+  /** When true, the player's cards are shown face-down (privacy) and can't
+   *  be played. Controlled by the parent (toggle sits next to the seat). */
+  hidden?: boolean;
 }
 
 export function Hand({
@@ -20,8 +23,10 @@ export function Hand({
   canPlay,
   onPlay,
   compact = false,
+  hidden = false,
 }: Props) {
-  const legal = canPlay ? legalCards(cards, leadSuit) : [];
+  const interactive = canPlay && !hidden;
+  const legal = interactive ? legalCards(cards, leadSuit) : [];
   const legalIds = new Set(legal.map((c) => c.id));
   const fanAngleStep = Math.min(
     compact ? 4 : 6,
@@ -39,46 +44,47 @@ export function Hand({
     : -8;
 
   return (
-    <div
-      className={cn(
-        "flex justify-center items-end px-2 sm:px-4 py-1 sm:py-2 transition-opacity",
-        !cards.length && "opacity-0"
-      )}
-    >
-      <AnimatePresence>
-        {cards.map((card, i) => {
-          const angle = start + i * fanAngleStep;
-          const isLegal = canPlay && legalIds.has(card.id);
-          return (
-            <motion.div
-              key={card.id}
-              initial={{ y: 80, opacity: 0, rotate: 0 }}
-              animate={{ y: 0, opacity: 1, rotate: angle }}
-              exit={{ y: -80, opacity: 0, scale: 0.8 }}
-              transition={{
-                duration: 0.35,
-                delay: i * 0.05,
-                type: "spring",
-                stiffness: 200,
-                damping: 22,
-              }}
-              style={{
-                transformOrigin: "bottom center",
-                marginInline: `${overlap / 2}px`,
-              }}
-            >
-              <PlayingCard
-                card={card}
-                size={cardSize}
-                selectable={canPlay}
-                disabled={canPlay && !isLegal}
-                onClick={() => isLegal && onPlay(card)}
-                glow={isMyTurn && isLegal}
-              />
-            </motion.div>
-          );
-        })}
-      </AnimatePresence>
-    </div>
+      <div
+        className={cn(
+          "flex justify-center items-end px-2 sm:px-4 py-1 sm:py-2 transition-opacity",
+          !cards.length && "opacity-0"
+        )}
+      >
+        <AnimatePresence>
+          {cards.map((card, i) => {
+            const angle = start + i * fanAngleStep;
+            const isLegal = interactive && legalIds.has(card.id);
+            return (
+              <motion.div
+                key={card.id}
+                initial={{ y: 80, opacity: 0, rotate: 0 }}
+                animate={{ y: 0, opacity: 1, rotate: angle }}
+                exit={{ y: -80, opacity: 0, scale: 0.8 }}
+                transition={{
+                  duration: 0.35,
+                  delay: i * 0.05,
+                  type: "spring",
+                  stiffness: 200,
+                  damping: 22,
+                }}
+                style={{
+                  transformOrigin: "bottom center",
+                  marginInline: `${overlap / 2}px`,
+                }}
+              >
+                <PlayingCard
+                  card={card}
+                  faceDown={hidden}
+                  size={cardSize}
+                  selectable={interactive}
+                  disabled={interactive && !isLegal}
+                  onClick={() => isLegal && onPlay(card)}
+                  glow={isMyTurn && isLegal}
+                />
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
   );
 }
